@@ -8,12 +8,13 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
 )
+
+// TODO refactor this functionality into some other package
 
 // Allows compressing offer/answer to bypass terminal input limits.
 const compress = false
@@ -26,6 +27,7 @@ func MustReadStdin() string {
 	for {
 		var err error
 		in, err = r.ReadString('\n')
+
 		if err != io.EOF {
 			if err != nil {
 				panic(err)
@@ -36,8 +38,6 @@ func MustReadStdin() string {
 			break
 		}
 	}
-
-	fmt.Println("")
 
 	return in
 }

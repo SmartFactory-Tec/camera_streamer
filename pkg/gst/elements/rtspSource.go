@@ -23,7 +23,7 @@ func NewRtspSource(name string, location string) (RtspSource, error) {
 		return RtspSource{}, err
 	}
 
-	createdElement.SetStringProperty("location", location)
+	createdElement.SetProperty("location", location)
 
 	return RtspSource{location: location, BaseElement: &createdElement}, nil
 }

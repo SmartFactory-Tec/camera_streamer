@@ -16,6 +16,7 @@ type Element interface {
 	Name() string
 	Type() string
 	SetState(state ElementState) error
+	SetProperty(name string, value any)
 	elementBase() *BaseElement
 }
 
@@ -62,8 +63,18 @@ func (g *BaseElement) QueryPadByName(name string) (BasePad, error) {
 	return BasePad{foundPad}, nil
 }
 
-func (g *BaseElement) SetStringProperty(name string, value string) {
-	C.gst_set_string_property(g.gstElement, C.CString(name), C.CString(value))
+func (g *BaseElement) SetProperty(name string, value any) {
+	switch value := value.(type) {
+	case string:
+		C.gst_set_string_property(g.gstElement, C.CString(name), C.CString(value))
+		break
+	case bool:
+		cValue := C.bool(value)
+		C.gst_set_bool_property(g.gstElement, C.CString(name), &cValue)
+		break
+	default:
+		panic("Unsupported type for element property!")
+	}
 }
 
 // LinkElements wrapper for C function to link two elements in a pipeline

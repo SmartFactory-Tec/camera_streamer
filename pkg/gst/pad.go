@@ -35,7 +35,7 @@ func (p *BasePad) Format(index int) (Format, error) {
 	}
 
 	if format.gstStructure == nil {
-		return Format{}, fmt.Errorf("Error accessing format structure for caps at index '%i'.", index)
+		return Format{}, fmt.Errorf("Error accessing format structure for caps at padAddedIndex '%i'.", index)
 	}
 
 	format.Name = C.GoString(C.gst_structure_get_name(format.gstStructure))

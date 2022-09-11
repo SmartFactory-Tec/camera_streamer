@@ -2,13 +2,11 @@
 #include <gst/gst.h>
 #include <stdbool.h>
 
-extern void padAddedCallback(GstElement *src, GstPad *pad, void *data);
-
 char *getGstElementName(GstElement *element);
 
 void gst_set_string_property(GstElement *element, char *property_name, char *property_value);
 
-void connectPadAdded(GstElement *element);
+void gst_set_bool_property(GstElement *element, char *property_name, bool *property_value);
 
 bool setStatePlaying(GstElement* element);
 

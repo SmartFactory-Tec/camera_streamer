@@ -12,3 +12,8 @@ void gst_set_string_property(GstElement *element, char *property_name, char *pro
     g_object_set(element, property_name, property_value, NULL);
 }
 
+void gst_set_bool_property(GstElement *element, char *property_name, bool *property_value) {
+    g_object_set(element, property_name, *property_value ? TRUE : FALSE, NULL);
+}
+
+

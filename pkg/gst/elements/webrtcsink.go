@@ -1,30 +1,39 @@
 package elements
 
 import "C"
+import (
+	"camera_server/pkg/gst"
+	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media"
+)
 
-type WebRtcSampleCallback func(*C.void, C.int, *C.void)
+type WebRtcSink struct {
+	AppSink
+}
 
-//var callbacks = make(map[string]WebRtcSampleCallback)
-//
-//type WebRtcSink struct {
-//	gst.Element
-//}
-//
-//func NewWebRtcSink(name string, track webrtc.TrackLocalStaticSample) (*WebRtcSink, error) {
-//	createdElement, err := gst.NewElement("appsink", name)
-//
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	createdElement.SetStringProperty("name", name)
-//
-//	callbacks[name] = (func(*C.void, C.int, *C.void) {
-//
-//	})
-//
-//	return &WebRtcSink{Element: *createdElement}, nil
-//}
+func NewWebRtcSink(name string, track *webrtc.TrackLocalStaticSample) (*WebRtcSink, error) {
+	createdAppSink, err := NewAppSink(name)
+	if err != nil {
+		return nil, err
+	}
+
+	createdAppSink.SetProperty("emit-signals", true)
+
+	createdAppSink.OnNewSample(func(newSample gst.Sample) {
+		buffer := newSample.Buffer()
+		data := buffer.Bytes()
+		duration := buffer.Duration()
+		if err := track.WriteSample(media.Sample{
+			Data:     data,
+			Duration: duration,
+		}); err != nil {
+			panic(err)
+		}
+	})
+
+	return &WebRtcSink{createdAppSink}, nil
+}
+
 //
 ////export newSampleHandler
 //func newSampleHandler(element *C.BaseElement, *C.void) {
