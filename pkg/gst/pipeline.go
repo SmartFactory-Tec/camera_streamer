@@ -14,7 +14,7 @@ import (
 type Pipeline interface {
 	Bin
 	pipelineBase() *BasePipeline
-	Bus() (*Bus, error)
+	Bus() (Bus, error)
 }
 
 type BasePipeline struct {
@@ -34,9 +34,11 @@ func NewGstPipeline(name string) (BasePipeline, error) {
 		BaseBin: BaseBin{
 			gstBin: (*C.GstBin)(unsafe.Pointer(gstPipeline)),
 			BaseElement: BaseElement{
-				gstElement:  (*C.GstElement)(unsafe.Pointer(gstPipeline)),
-				elementType: "pipeline",
+				gstElement:   (*C.GstElement)(unsafe.Pointer(gstPipeline)),
+				elementState: NULL,
+				elementType:  "pipeline",
 			},
+			Elements: make(map[string]Element),
 		},
 	}
 	return createdPipeline, nil

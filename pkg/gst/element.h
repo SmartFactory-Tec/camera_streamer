@@ -9,6 +9,9 @@ void gst_set_string_property(GstElement *element, char *property_name, char *pro
 void gst_set_bool_property(GstElement *element, char *property_name, bool *property_value);
 
 bool setStatePlaying(GstElement* element);
+bool setStateNull(GstElement* element);
+bool setStatePaused(GstElement* element);
+bool setStateReady(GstElement* element);
 
 #endif // PROPERTY_HELPERS_H
 

@@ -18,16 +18,22 @@ type Element interface {
 	SetState(state ElementState) error
 	SetProperty(name string, value any)
 	elementBase() *BaseElement
+	State() ElementState
 }
 
 type BaseElement struct {
-	elementType string
-	gstElement  *C.GstElement
+	elementType  string
+	elementState ElementState
+	gstElement   *C.GstElement
 }
 
 func (g *BaseElement) Name() string {
 	name := C.gst_object_get_name((*C.GstObject)(unsafe.Pointer(g.gstElement)))
 	return C.GoString(name)
+}
+
+func (b *BaseElement) State() ElementState {
+	return b.elementState
 }
 
 func (g *BaseElement) Type() string {
@@ -52,7 +58,7 @@ func NewGstElement(elementType string, name string) (BaseElement, error) {
 		return BaseElement{}, fmt.Errorf("error creating element of type '%s', with Name '%s'", elementType, name)
 	}
 
-	return BaseElement{elementType, newGstElement}, nil
+	return BaseElement{elementType, NULL, newGstElement}, nil
 }
 
 func (g *BaseElement) QueryPadByName(name string) (BasePad, error) {
@@ -92,17 +98,41 @@ func LinkElements(first Element, second Element) error {
 type ElementState int
 
 const (
-	PLAYING ElementState = iota
+	NULL ElementState = iota
+	PLAYING
+	READY
+	PAUSED
 )
 
 func (g *BaseElement) SetState(state ElementState) error {
 	switch state {
 	case PLAYING:
 		if !C.setStatePlaying(g.gstElement) {
-			return fmt.Errorf("could not change to requested state")
+			return fmt.Errorf("could not change state to playing")
+		} else {
+			g.elementState = PLAYING
+		}
+	case READY:
+		if !C.setStateReady(g.gstElement) {
+			return fmt.Errorf("could not change state to ready")
+		} else {
+			g.elementState = READY
+		}
+	case NULL:
+		if !C.setStateNull(g.gstElement) {
+			return fmt.Errorf("could not change state to null")
+		} else {
+			g.elementState = NULL
+		}
+	case PAUSED:
+		if !C.setStatePaused(g.gstElement) {
+			return fmt.Errorf("could not change state to paused")
+		} else {
+			g.elementState = PAUSED
 		}
 	default:
-		return fmt.Errorf("unknown state change requested")
+		// This should really not happen
+		panic("unknown state change requested")
 	}
 	return nil
 }

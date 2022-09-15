@@ -1,20 +1,21 @@
-package elements
+package main
 
 import "C"
 import (
 	"camera_server/pkg/gst"
+	"camera_server/pkg/gst/elements"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 type WebRtcSink struct {
-	AppSink
+	elements.AppSink
 }
 
-func NewWebRtcSink(name string, track *webrtc.TrackLocalStaticSample) (*WebRtcSink, error) {
-	createdAppSink, err := NewAppSink(name)
+func NewWebRtcSink(name string, track *webrtc.TrackLocalStaticSample) (WebRtcSink, error) {
+	createdAppSink, err := elements.NewAppSink(name)
 	if err != nil {
-		return nil, err
+		return WebRtcSink{}, err
 	}
 
 	createdAppSink.SetProperty("emit-signals", true)
@@ -31,7 +32,7 @@ func NewWebRtcSink(name string, track *webrtc.TrackLocalStaticSample) (*WebRtcSi
 		}
 	})
 
-	return &WebRtcSink{createdAppSink}, nil
+	return WebRtcSink{createdAppSink}, nil
 }
 
 //
