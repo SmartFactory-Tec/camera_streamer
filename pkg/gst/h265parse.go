@@ -1,13 +1,11 @@
-package elements
-
-import "camera_server/pkg/gst"
+package gst
 
 type H265Parse struct {
-	*gst.BaseElement
+	*BaseElement
 }
 
 func NewH265Parse(name string) (H265Parse, error) {
-	createdElement, err := gst.NewGstElement("h265parse", name)
+	createdElement, err := NewGstElement("h265parse", name)
 
 	if err != nil {
 		return H265Parse{}, err

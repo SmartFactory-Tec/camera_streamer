@@ -8,6 +8,7 @@ package gst
 import "C"
 import (
 	"fmt"
+	"sync"
 	"unsafe"
 )
 
@@ -15,14 +16,13 @@ type Bin interface {
 	AddElement(Element) bool
 	RemoveElement(Element) bool
 	GetElement(string) (Element, bool)
-	GetElementCount() int
 	binBase() *BaseBin
 	Element
 }
 
 type BaseBin struct {
 	BaseElement
-	Elements map[string]Element
+	Elements *sync.Map
 	gstBin   *C.GstBin
 }
 
@@ -40,7 +40,7 @@ func NewBaseBin(name string) (BaseBin, error) {
 			elementState: NULL,
 			elementType:  "bin",
 		},
-		Elements: make(map[string]Element),
+		Elements: new(sync.Map),
 	}
 
 	return createdBin, nil
@@ -51,22 +51,63 @@ func (b *BaseBin) binBase() *BaseBin {
 }
 
 func (b *BaseBin) AddElement(element Element) bool {
-	b.Elements[element.Name()] = element
+	b.Elements.Store(element.Name(), element)
 	return C.gst_bin_add(b.gstBin, element.elementBase().gstElement) != 0
 }
 
 func (b *BaseBin) RemoveElement(element Element) bool {
+	b.Elements.Delete(element.Name())
 	return C.gst_bin_remove(b.gstBin, element.elementBase().gstElement) != 0
 }
 
 func (b *BaseBin) GetElement(name string) (Element, bool) {
-	if element, ok := b.Elements[name]; ok {
-		return element, true
-	} else {
+	if value, ok := b.Elements.Load(name); !ok {
 		return nil, false
+	} else {
+		return value.(Element), true
 	}
 }
 
-func (b *BaseBin) GetElementCount() int {
-	return len(b.Elements)
+func (b *BaseBin) AddSrcElement(element Element) bool {
+	if ok := b.AddElement(element); !ok {
+		return false
+	}
+
+	pad, err := element.QueryPadByName("src")
+	if err != nil {
+		return false
+	}
+
+	ghostSrc, err := NewGhostPad("src", pad)
+	if err != nil {
+		return false
+	}
+
+	if err := b.AddPad(ghostSrc); err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (b *BaseBin) AddSinkElement(element Element) bool {
+	if ok := b.AddElement(element); !ok {
+		return false
+	}
+
+	pad, err := element.QueryPadByName("sink")
+	if err != nil {
+		return false
+	}
+
+	ghostSrc, err := NewGhostPad("sink", pad)
+	if err != nil {
+		return false
+	}
+
+	if err := b.AddPad(ghostSrc); err != nil {
+		return false
+	}
+
+	return true
 }

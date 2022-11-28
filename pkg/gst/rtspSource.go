@@ -1,8 +1,4 @@
-package elements
-
-import (
-	"camera_server/pkg/gst"
-)
+package gst
 
 /*
 #cgo pkg-config: gstreamer-1.0
@@ -13,11 +9,11 @@ import "C"
 
 type RtspSource struct {
 	location string
-	*gst.BaseElement
+	*BaseElement
 }
 
 func NewRtspSource(name string, location string) (RtspSource, error) {
-	createdElement, err := gst.NewGstElement("rtspsrc", name)
+	createdElement, err := NewGstElement("rtspsrc", name)
 
 	if err != nil {
 		return RtspSource{}, err

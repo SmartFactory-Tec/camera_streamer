@@ -11,7 +11,7 @@ import (
 )
 
 type Pad interface {
-	Format(index int) (Format, error)
+	Caps() Caps
 	padBase() *BasePad
 }
 
@@ -19,28 +19,17 @@ type BasePad struct {
 	gstPad *C.GstPad
 }
 
-func (p *BasePad) padBase() *BasePad {
-	return p
+func (p *BasePad) Caps() Caps {
+	gstCaps := C.gst_pad_get_current_caps(p.gstPad)
+
+	return &BaseCaps{
+		gstCaps,
+	}
+
 }
 
-func (p *BasePad) Format(index int) (Format, error) {
-	caps := C.gst_pad_get_current_caps(p.gstPad)
-
-	if caps == nil {
-		return Format{}, fmt.Errorf("Error accesing caps")
-	}
-
-	format := Format{
-		gstStructure: C.gst_caps_get_structure(caps, C.uint(index)),
-	}
-
-	if format.gstStructure == nil {
-		return Format{}, fmt.Errorf("Error accessing format structure for caps at padAddedIndex '%i'.", index)
-	}
-
-	format.Name = C.GoString(C.gst_structure_get_name(format.gstStructure))
-
-	return format, nil
+func (p *BasePad) padBase() *BasePad {
+	return p
 }
 
 func LinkPads(first Pad, second Pad) error {
@@ -66,20 +55,3 @@ func LinkPads(first Pad, second Pad) error {
 	}
 
 }
-
-type Format struct {
-	gstStructure *C.GstStructure
-	Name         string
-}
-
-func (f *Format) QueryStringProperty(propertyName string) (string, error) {
-	value := C.gst_structure_get_string(f.gstStructure, C.CString(propertyName))
-
-	if value == nil {
-		return "", fmt.Errorf("property '%s' not found", propertyName)
-	}
-
-	return C.GoString(value), nil
-}
-
-// TODO implement accesor for format properties

@@ -19,12 +19,30 @@ type Element interface {
 	SetProperty(name string, value any)
 	elementBase() *BaseElement
 	State() ElementState
+	QueryPadByName(name string) (Pad, error)
+	AddPad(Pad) error
 }
 
 type BaseElement struct {
 	elementType  string
 	elementState ElementState
 	gstElement   *C.GstElement
+}
+
+func NewGstElement(elementType string, name string) (BaseElement, error) {
+	gstElementFactory := C.gst_element_factory_find(C.CString(elementType))
+
+	if gstElementFactory == nil {
+		return BaseElement{}, fmt.Errorf("error creating element of type '%s' with Name '%s', no such type found", elementType, name)
+	}
+
+	newGstElement := C.gst_element_factory_make(C.CString(elementType), C.CString(name))
+
+	if newGstElement == nil {
+		return BaseElement{}, fmt.Errorf("error creating element of type '%s', with Name '%s'", elementType, name)
+	}
+
+	return BaseElement{elementType, NULL, newGstElement}, nil
 }
 
 func (g *BaseElement) Name() string {
@@ -45,28 +63,12 @@ func (g *BaseElement) elementBase() *BaseElement {
 	return g
 }
 
-func NewGstElement(elementType string, name string) (BaseElement, error) {
-	gstElementFactory := C.gst_element_factory_find(C.CString(elementType))
-
-	if gstElementFactory == nil {
-		return BaseElement{}, fmt.Errorf("error creating element of type '%s' with Name '%s', no such type found", elementType, name)
-	}
-
-	newGstElement := C.gst_element_factory_make(C.CString(elementType), C.CString(name))
-
-	if newGstElement == nil {
-		return BaseElement{}, fmt.Errorf("error creating element of type '%s', with Name '%s'", elementType, name)
-	}
-
-	return BaseElement{elementType, NULL, newGstElement}, nil
-}
-
-func (g *BaseElement) QueryPadByName(name string) (BasePad, error) {
+func (g *BaseElement) QueryPadByName(name string) (Pad, error) {
 	foundPad := C.gst_element_get_static_pad(g.gstElement, C.CString(name))
 	if foundPad == nil {
-		return BasePad{}, fmt.Errorf("Error finding pad with Name '%s', on element '%s'['%s']", name, g.Name(), g.Type())
+		return &BasePad{}, fmt.Errorf("Error finding pad with Name '%s', on element '%s'['%s']", name, g.Name(), g.Type())
 	}
-	return BasePad{foundPad}, nil
+	return &BasePad{foundPad}, nil
 }
 
 func (g *BaseElement) SetProperty(name string, value any) {
@@ -78,6 +80,11 @@ func (g *BaseElement) SetProperty(name string, value any) {
 		cValue := C.bool(value)
 		C.gst_set_bool_property(g.gstElement, C.CString(name), &cValue)
 		break
+	case int:
+		C.gst_set_int_property(g.gstElement, C.CString(name), C.int(value))
+		break
+	case BaseCaps:
+		C.gst_set_caps_property(g.gstElement, C.CString(name), value.capsBase().gstCaps)
 	default:
 		panic("Unsupported type for element property!")
 	}
@@ -133,6 +140,13 @@ func (g *BaseElement) SetState(state ElementState) error {
 	default:
 		// This should really not happen
 		panic("unknown state change requested")
+	}
+	return nil
+}
+
+func (e *BaseElement) AddPad(pad Pad) error {
+	if ret := C.gst_element_add_pad(e.gstElement, pad.padBase().gstPad); ret == 0 {
+		return fmt.Errorf("could not add padd to element")
 	}
 	return nil
 }

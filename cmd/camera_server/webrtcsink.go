@@ -3,36 +3,53 @@ package main
 import "C"
 import (
 	"camera_server/pkg/gst"
-	"camera_server/pkg/gst/elements"
+	"context"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 type WebRtcSink struct {
-	elements.AppSink
+	gst.AppSink
+	track *webrtc.TrackLocalStaticSample
 }
 
 func NewWebRtcSink(name string, track *webrtc.TrackLocalStaticSample) (WebRtcSink, error) {
-	createdAppSink, err := elements.NewAppSink(name)
+	createdAppSink, err := gst.NewAppSink(name)
 	if err != nil {
 		return WebRtcSink{}, err
 	}
 
-	createdAppSink.SetProperty("emit-signals", true)
+	return WebRtcSink{createdAppSink, track}, nil
+}
 
-	createdAppSink.OnNewSample(func(newSample gst.Sample) {
-		buffer := newSample.Buffer()
-		data := buffer.Bytes()
-		duration := buffer.Duration()
-		if err := track.WriteSample(media.Sample{
-			Data:     data,
-			Duration: duration,
-		}); err != nil {
-			panic(err)
+func (w *WebRtcSink) Start(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			// If context is done stop loop
+			return
+		default:
+			sample, err := w.PullSample()
+
+			if err != nil {
+				// Don't process if nothing is available yet
+				continue
+			}
+
+			buffer := sample.Buffer()
+			data := buffer.Bytes()
+			duration := buffer.Duration()
+
+			if err := w.track.WriteSample(media.Sample{
+				Data:     data,
+				Duration: duration,
+			}); err != nil {
+				break
+			}
 		}
-	})
 
-	return WebRtcSink{createdAppSink}, nil
+	}
+
 }
 
 //

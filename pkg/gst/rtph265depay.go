@@ -1,13 +1,11 @@
-package elements
-
-import "camera_server/pkg/gst"
+package gst
 
 type RtpH265Depay struct {
-	*gst.BaseElement
+	*BaseElement
 }
 
 func NewRtpH265Depay(name string) (RtpH265Depay, error) {
-	createdElement, err := gst.NewGstElement("rtph265depay", name)
+	createdElement, err := NewGstElement("rtph265depay", name)
 
 	if err != nil {
 		return RtpH265Depay{}, err

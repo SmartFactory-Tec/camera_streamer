@@ -5,22 +5,23 @@ package gst
 #include <gst/gst.h>
 */
 import "C"
+import "runtime"
 
-type Sample interface {
-	Buffer() Buffer
-	baseSample() *BaseSample
-}
-
-type BaseSample struct {
+type Sample struct {
 	gstSample *C.GstSample
 }
 
-func (b *BaseSample) baseSample() *BaseSample {
-	return b
+func newSample(gstSample *C.GstSample) Sample {
+	sample := Sample{gstSample}
+	// Unref sample when GC runs
+	runtime.SetFinalizer(&sample, func(sample *Sample) {
+		C.gst_sample_unref(sample.gstSample)
+	})
+	return sample
 }
 
-func (b *BaseSample) Buffer() Buffer {
-	return &BaseBuffer{
+func (b *Sample) Buffer() Buffer {
+	return Buffer{
 		C.gst_sample_get_buffer(b.gstSample),
 	}
 }

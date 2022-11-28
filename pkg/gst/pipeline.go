@@ -8,6 +8,7 @@ package gst
 import "C"
 import (
 	"fmt"
+	"sync"
 	"unsafe"
 )
 
@@ -38,7 +39,7 @@ func NewGstPipeline(name string) (BasePipeline, error) {
 				elementState: NULL,
 				elementType:  "pipeline",
 			},
-			Elements: make(map[string]Element),
+			Elements: new(sync.Map),
 		},
 	}
 	return createdPipeline, nil

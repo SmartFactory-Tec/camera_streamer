@@ -1,16 +1,42 @@
 package gst
 
 /*
-#cgo pkg-config: gstreamer-1.0
+#cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
 
 #include <gst/gst.h>
+#include <gst/app/gstappsink.h>
 #include "callbacks.h"
 */
 import "C"
 import (
+	"fmt"
 	"sync"
 	"unsafe"
 )
+
+type AppSink struct {
+	*BaseElement
+}
+
+func NewAppSink(name string) (AppSink, error) {
+	createdElement, err := NewGstElement("appsink", name)
+
+	if err != nil {
+		return AppSink{}, err
+	}
+
+	return AppSink{&createdElement}, nil
+}
+
+func (a *AppSink) PullSample() (Sample, error) {
+	var gstSample *C.GstSample = C.gst_app_sink_pull_sample((*C.GstAppSink)(unsafe.Pointer(a.gstElement)))
+
+	if gstSample == nil {
+		return Sample{}, fmt.Errorf("appsink is either null or has reached EOS")
+	}
+
+	return newSample(gstSample), nil
+}
 
 type NewSampleCallback func(newSample Sample)
 
@@ -22,7 +48,7 @@ var (
 
 //export newSampleHandler
 func newSampleHandler(element *C.GstElement, callbackID C.long) {
-	sample := BaseSample{}
+	sample := Sample{}
 
 	if C.callSignalByName(element, C.CString("pull-sample"), unsafe.Pointer(&sample.gstSample)); sample.gstSample == nil {
 		println("Couldn't pull sample")
@@ -33,13 +59,13 @@ func newSampleHandler(element *C.GstElement, callbackID C.long) {
 	defer newSampleLock.Unlock()
 
 	if callback, ok := newSampleCallbacks[int64(callbackID)]; ok {
-		callback(&sample)
+		callback(sample)
 	} else {
 		panic("callback not found")
 	}
 }
 
-func (g *BaseElement) OnNewSample(callback NewSampleCallback) {
+func (g *AppSink) OnNewSample(callback NewSampleCallback) {
 	newSampleLock.Lock()
 	defer newSampleLock.Unlock()
 

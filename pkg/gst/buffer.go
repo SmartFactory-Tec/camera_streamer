@@ -10,21 +10,11 @@ import (
 	"unsafe"
 )
 
-type Buffer interface {
-	Bytes() []byte
-	Duration() time.Duration
-	bufferBase() *BaseBuffer
-}
-
-type BaseBuffer struct {
+type Buffer struct {
 	gstBuffer *C.GstBuffer
 }
 
-func (b *BaseBuffer) bufferBase() *BaseBuffer {
-	return b
-}
-
-func (b *BaseBuffer) Bytes() []byte {
+func (b *Buffer) Bytes() []byte {
 	var (
 		bufferCopy C.gpointer
 		copySize   C.gsize
@@ -33,6 +23,6 @@ func (b *BaseBuffer) Bytes() []byte {
 	return C.GoBytes(unsafe.Pointer(bufferCopy), C.int(copySize))
 }
 
-func (b *BaseBuffer) Duration() time.Duration {
-	return time.Duration(C.int(b.gstBuffer.duration))
+func (b *Buffer) Duration() time.Duration {
+	return time.Duration(b.gstBuffer.duration)
 }

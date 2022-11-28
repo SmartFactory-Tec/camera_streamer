@@ -1,13 +1,11 @@
-package elements
-
-import "camera_server/pkg/gst"
+package gst
 
 type Vp8Dec struct {
-	*gst.BaseElement
+	*BaseElement
 }
 
 func NewVp8Dec(name string) (Vp8Dec, error) {
-	createdElement, err := gst.NewGstElement("vp8dec", name)
+	createdElement, err := NewGstElement("vp8dec", name)
 
 	if err != nil {
 		return Vp8Dec{}, err

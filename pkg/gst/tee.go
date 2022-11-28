@@ -1,15 +1,11 @@
-package elements
-
-import (
-	"camera_server/pkg/gst"
-)
+package gst
 
 type Tee struct {
-	*gst.BaseElement
+	*BaseElement
 }
 
 func NewTee(name string) (Tee, error) {
-	createdElement, err := gst.NewGstElement("tee", name)
+	createdElement, err := NewGstElement("tee", name)
 
 	if err != nil {
 		return Tee{}, err

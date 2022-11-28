@@ -30,4 +30,12 @@ void gst_set_bool_property(GstElement *element, char *property_name, bool *prope
     g_object_set(element, property_name, *property_value ? TRUE : FALSE, NULL);
 }
 
+void gst_set_int_property(GstElement *element, char *property_name, int property_value) {
+    g_object_set(element, property_name, property_value, NULL);
+}
+
+void gst_set_caps_property(GstElement *element, char *property_name, GstCaps *property_value) {
+    g_object_set(element, property_name, property_value, NULL);
+}
+
 

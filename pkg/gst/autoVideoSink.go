@@ -1,15 +1,11 @@
-package elements
-
-import (
-	"camera_server/pkg/gst"
-)
+package gst
 
 type AutoVideoSink struct {
-	*gst.BaseElement
+	*BaseElement
 }
 
 func NewAutoVideoSink(name string) (AutoVideoSink, error) {
-	createdElement, err := gst.NewGstElement("autovideosink", name)
+	createdElement, err := NewGstElement("autovideosink", name)
 
 	if err != nil {
 		return AutoVideoSink{}, err
