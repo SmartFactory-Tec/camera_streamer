@@ -11,7 +11,7 @@ COPY . .
 RUN go mod download
 
 # Builds your app with optional configuration
-RUN go build -o ./out camera_server/cmd/camera_server
+RUN go build -buildvcs=false -o ./out camera_server/cmd/camera_server
 
 # Tells Docker which network port your container listens on
 EXPOSE 3000
