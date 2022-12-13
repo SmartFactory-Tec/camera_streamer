@@ -7,7 +7,7 @@ WORKDIR /app
 # Copies everything from your root directory into /app
 COPY . .
 
-RUN apt-get install -y  \
+RUN apt-get update && apt-get install -y  \
     libgstreamer1.0-dev  \
     libgstreamer-plugins-base1.0-dev  \
     libgstreamer-plugins-bad1.0-dev  \
