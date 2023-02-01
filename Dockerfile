@@ -1,5 +1,6 @@
 # Specifies a parent image
 FROM golang:1.19.2-bullseye
+ENV SERVER_CONFIG_PATH=/config
 
 # Creates an app directory to hold your app’s source code
 WORKDIR /camera_server
