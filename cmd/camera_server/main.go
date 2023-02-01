@@ -4,6 +4,7 @@ import (
 	"camera_server/pkg/gst"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/mattn/go-colorable"
@@ -33,7 +34,7 @@ func main() {
 	gst.Init()
 
 	logger.Infow("Loading configuration from file", "filename", "config.toml")
-	config, err := NewConfig("config.toml")
+	config, err := NewConfig()
 
 	var streams []*Stream
 	streamMap := make(map[string]*Stream)
@@ -118,8 +119,8 @@ func main() {
 
 	handler := cors.Default().Handler(r)
 
-	logger.Infow("starting web server", "port", "3000")
-	err = http.ListenAndServe(":3000", handler)
+	logger.Infow("starting web server", "port", config.Port)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", config.Port), handler)
 	logger.Infow("server stopped")
 
 	if !errors.Is(err, http.ErrServerClosed) {
