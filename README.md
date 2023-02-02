@@ -18,18 +18,38 @@ git clone https://github.com/SmartFactory-Tec/camera_server.git
 
 ## Building and running the server
 First, enter the repository's folder and download all of the project's dependencies:
+
 ```shell
 cd camera_server
 go mod download
 ```
 
 Next, to run the program run the following command:
+
 ```shell
 go run camera_server/cmd/camera_server
 ```
 
 If you otherwise want to only build the server and get it's executable, use the following command (don't forget to give 
 the executable a name):
+
 ```shell
 go build -o {EXECUTABLE NAME} camera_server/cmd/camera_server
 ```
+
+## Configuring the server
+The server automatically generates a default configuration file in your distribution's default location. Normally,
+this is `~/.config/camera_server/config.toml`. This can be overriden by setting the `SERVER_CONFIG_PATH` environment 
+variable to any other folder.
+
+## Running in docker
+An image for running this server is available in the GitHub Container Registry. Pull it with the following command:
+
+```shell
+docker pull ghcr.io/smartfactory-tec/camera_server:latest
+```
+
+To configure the server inside the docker image, override the `/config` folder inside the image (with a volume or bind
+mount). 
+
+By default, the image exposes the 3000 port.
