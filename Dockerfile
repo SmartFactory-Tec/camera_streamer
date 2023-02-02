@@ -1,5 +1,8 @@
 # Specifies a parent image
 FROM golang:1.19.2-bullseye
+
+LABEL org.opencontainers.image.source=https://github.com/Smartfactory-Tec/camera_server
+
 ENV SERVER_CONFIG_PATH=/config
 
 # Creates an app directory to hold your app’s source code
