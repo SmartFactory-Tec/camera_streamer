@@ -8,8 +8,11 @@ import (
 
 type (
 	Config struct {
-		Port    int
-		Cameras []CameraConfig
+		Port            int
+		ClientOrigin    string
+		HTTPSOriginOnly bool
+		AllowAllOrigins bool
+		Cameras         []CameraConfig
 	}
 
 	CameraConfig struct {
@@ -23,7 +26,10 @@ type (
 	}
 )
 
-const exampleConfig = "port = 3000\n\n" +
+const exampleConfig = "port = 3000\n" +
+	"clientOrigin = 'localhost'\n" +
+	"httpsOriginOnly = false\n" +
+	"allowAllOrigins = false\n\n" +
 	"# example camera definition\n" +
 	"# [[cameras]]\n" +
 	"# name = 'example'\n" +

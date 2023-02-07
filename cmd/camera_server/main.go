@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/mattn/go-colorable"
-	"github.com/rs/cors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"net/http"
@@ -35,6 +35,25 @@ func main() {
 
 	logger.Infow("Loading configuration from file", "filename", "config.toml")
 	config, err := NewConfig()
+
+	var allowedOrigins []string
+
+	if config.AllowAllOrigins && !config.HTTPSOriginOnly {
+		allowedOrigins = []string{"http://*", "https://*"}
+	} else if config.AllowAllOrigins {
+		allowedOrigins = []string{"https://"}
+	} else if config.HTTPSOriginOnly {
+		allowedOrigins = []string{fmt.Sprintf("https://%s", config.ClientOrigin)}
+	} else {
+		allowedOrigins = []string{fmt.Sprintf("https://%s", config.ClientOrigin), fmt.Sprintf("http://%s", config.ClientOrigin)}
+	}
+
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins: allowedOrigins,
+		AllowedMethods: []string{"GET", "OPTIONS"},
+		AllowedHeaders: []string{"*"},
+		ExposedHeaders: []string{"*"},
+	}))
 
 	var streams []*Stream
 	streamMap := make(map[string]*Stream)
@@ -117,10 +136,8 @@ func main() {
 		r.Get("/{streamID}/video", connectToStream)
 	})
 
-	handler := cors.Default().Handler(r)
-
 	logger.Infow("starting web server", "port", config.Port)
-	err = http.ListenAndServe(fmt.Sprintf(":%d", config.Port), handler)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", config.Port), r)
 	logger.Infow("server stopped")
 
 	if !errors.Is(err, http.ErrServerClosed) {
