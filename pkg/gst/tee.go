@@ -1,15 +1,18 @@
 package gst
 
 type Tee struct {
-	*BaseElement
+	Element
 }
 
-func NewTee(name string) (Tee, error) {
-	createdElement, err := NewGstElement("tee", name)
+func NewTee(name string) (*Tee, error) {
+	element, err := makeElement(name, "tee")
 
 	if err != nil {
-		return Tee{}, err
+		return nil, err
 	}
 
-	return Tee{&createdElement}, nil
+	tee := Tee{element}
+	enableGarbageCollection(&tee)
+
+	return &tee, nil
 }

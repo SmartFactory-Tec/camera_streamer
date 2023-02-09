@@ -8,51 +8,42 @@ package gst
 import "C"
 import (
 	"fmt"
-	"sync"
 	"unsafe"
 )
 
-type Pipeline interface {
-	Bin
-	pipelineBase() *BasePipeline
-	Bus() (Bus, error)
-}
-
-type BasePipeline struct {
-	BaseBin
+type Pipeline struct {
 	gstPipeline *C.GstPipeline
+	Bin
 }
 
-func NewGstPipeline(name string) (BasePipeline, error) {
+func NewGstPipeline(name string) (*Pipeline, error) {
 	gstPipeline := C.gst_pipeline_new(C.CString(name))
 
 	if gstPipeline == nil {
-		return BasePipeline{}, fmt.Errorf("error creating pipeline with Name '%s'", name)
+		return nil, fmt.Errorf("error creating pipeline with Name '%s'", name)
 	}
 
-	createdPipeline := BasePipeline{
-		gstPipeline: (*C.GstPipeline)(unsafe.Pointer(gstPipeline)),
-		BaseBin: BaseBin{
-			gstBin: (*C.GstBin)(unsafe.Pointer(gstPipeline)),
-			BaseElement: BaseElement{
-				gstElement:   (*C.GstElement)(unsafe.Pointer(gstPipeline)),
-				elementState: NULL,
-				elementType:  "pipeline",
-			},
-			Elements: new(sync.Map),
-		},
-	}
-	return createdPipeline, nil
+	pipeline := wrapGstPipeline((*C.GstPipeline)(unsafe.Pointer(gstPipeline)))
+	enableGarbageCollection(&pipeline)
+
+	return &pipeline, nil
 }
 
-func (e *BasePipeline) Bus() (Bus, error) {
-	bus := C.gst_element_get_bus(e.gstElement)
-	if bus == nil {
-		return Bus{}, fmt.Errorf("error aquiring bus for pipeline %s", e.Name())
+func wrapGstPipeline(gstPipeline *C.GstPipeline) Pipeline {
+	return Pipeline{
+		gstPipeline,
+		wrapBin((*C.GstBin)(unsafe.Pointer(gstPipeline))),
 	}
-	return Bus{gstBus: bus}, nil
 }
 
-func (e *BasePipeline) pipelineBase() *BasePipeline {
-	return e
+func (e *Pipeline) Bus() (*Bus, error) {
+	gstBus := C.gst_element_get_bus(e.gstElement)
+	if gstBus == nil {
+		return nil, fmt.Errorf("error aquiring gstBus for pipeline %s", e.Name())
+	}
+
+	bus := wrapGstBus(gstBus)
+	enableGarbageCollection(&bus)
+
+	return &bus, nil
 }

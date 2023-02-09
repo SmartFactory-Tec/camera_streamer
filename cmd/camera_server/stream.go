@@ -13,8 +13,8 @@ import (
 type Stream struct {
 	Id           string `json:"id,omitempty"`
 	Name         string `json:"name,omitempty"`
-	pipeline     gst.Pipeline
-	sourceTee    gst.Tee
+	pipeline     *gst.Pipeline
+	sourceTee    *gst.Tee
 	queues       *sync.Map
 	sinks        *sync.Map
 	trackCtxs    *sync.Map
@@ -26,7 +26,7 @@ type Stream struct {
 
 // NewStream constructs a stream with a given name and id that pulls data from a given source gst element.
 // The element is expected to provide the stream with x-raw video, so it must decode any video it sends.
-func NewStream(name string, id string, src gst.UriDecodeBin, logger *zap.SugaredLogger) (Stream, error) {
+func NewStream(name string, id string, src *gst.UriDecodeBin, logger *zap.SugaredLogger) (Stream, error) {
 	streamLogger := logger.Named("Stream").With("Id", id)
 
 	// Create the stream pipeline
@@ -50,8 +50,7 @@ func NewStream(name string, id string, src gst.UriDecodeBin, logger *zap.Sugared
 	if err != nil {
 		return Stream{}, err
 	}
-	enc.SetProperty("threads", 4)
-	enc.SetProperty("deadline", 2)
+	enc.SetProperty("deadline", 1)
 
 	srcQueue, err := gst.NewQueue(fmt.Sprintf("%s-srcQueue", id))
 	if err != nil {
@@ -69,12 +68,14 @@ func NewStream(name string, id string, src gst.UriDecodeBin, logger *zap.Sugared
 	gst.LinkElements(srcQueue, enc)
 	gst.LinkElements(enc, srcTee)
 
-	src.OnPadAdded(func(pad gst.Pad) {
+	src.OnPadAdded(func(pad *gst.Pad) {
 		logger := logger.Named("OnPadAdded")
-		format, err := pad.Caps().Format(0)
+		// TODO handle error
+		caps, err := pad.Caps()
+		format, err := caps.Format(0)
 		panicIfError(err)
 
-		if format.Name != "video/x-raw" {
+		if format.Name() != "video/x-raw" {
 			return
 		}
 
@@ -90,7 +91,7 @@ func NewStream(name string, id string, src gst.UriDecodeBin, logger *zap.Sugared
 	stream := Stream{
 		id,
 		name,
-		&newPipeline,
+		newPipeline,
 		srcTee,
 		new(sync.Map),
 		new(sync.Map),
@@ -145,9 +146,9 @@ func (s *Stream) EndTrack(track *webrtc.TrackLocalStaticSample) error {
 		return fmt.Errorf("unable to retrieve webrtc sink for track")
 	}
 
-	var queue gst.Queue2
+	var queue *gst.Queue2
 	if value, ok := s.queues.LoadAndDelete(trackID); ok {
-		queue = value.(gst.Queue2)
+		queue = value.(*gst.Queue2)
 	} else {
 		return fmt.Errorf("Unable to retrieve webrtc sink for track")
 	}
@@ -258,7 +259,7 @@ func (s *Stream) MsgBus() {
 		// If there's an error, there's no message to process
 		if err == nil {
 			logger.Debugw("received bus message")
-			switch msg.Type {
+			switch msg.Type() {
 			case gst.ERROR:
 				debug, err := msg.ParseAsError()
 				if err != nil {

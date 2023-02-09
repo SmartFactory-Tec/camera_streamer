@@ -9,7 +9,7 @@ import (
 )
 
 type WebRtcSink struct {
-	gst.AppSink
+	*gst.AppSink
 	track *webrtc.TrackLocalStaticSample
 }
 
@@ -51,9 +51,3 @@ func (w *WebRtcSink) Start(ctx context.Context) {
 	}
 
 }
-
-//
-////export newSampleHandler
-//func newSampleHandler(element *C.BaseElement, *C.void) {
-//	C.g_signal_emit_by_name()
-//}

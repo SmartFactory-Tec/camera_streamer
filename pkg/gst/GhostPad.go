@@ -6,18 +6,32 @@ package gst
    #include <gst/gst.h>
 */
 import "C"
-import "fmt"
+import (
+	"fmt"
+	"unsafe"
+)
 
 type GhostPad struct {
-	referencedPad Pad
-	*BasePad
+	gstGhostPad *C.GstGhostPad
+	Pad
 }
 
-func NewGhostPad(name string, original Pad) (GhostPad, error) {
+func NewGhostPad(name string, original *Pad) (*GhostPad, error) {
 	// TODO original must be unlinked
-	gstGhostPad := C.gst_ghost_pad_new(C.CString(name), original.padBase().gstPad)
-	if gstGhostPad == nil {
-		return GhostPad{}, fmt.Errorf("could not create ghost pad")
+	gstPad := C.gst_ghost_pad_new(C.CString(name), original.gstPad)
+	if gstPad == nil {
+		return nil, fmt.Errorf("could not create ghost pad")
 	}
-	return GhostPad{original, &BasePad{gstGhostPad}}, nil
+
+	ghostPad := wrapGhostPad((*C.GstGhostPad)(unsafe.Pointer(gstPad)))
+	enableGarbageCollection(&ghostPad)
+
+	return &ghostPad, nil
+}
+
+func wrapGhostPad(gstGhostPad *C.GstGhostPad) GhostPad {
+	return GhostPad{
+		gstGhostPad,
+		wrapPad((*C.GstPad)(unsafe.Pointer(gstGhostPad))),
+	}
 }

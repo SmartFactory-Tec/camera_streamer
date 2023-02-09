@@ -1,15 +1,18 @@
 package gst
 
 type RtpH264Depay struct {
-	*BaseElement
+	Element
 }
 
-func NewRtpH264Depay(name string) (RtpH264Depay, error) {
-	createdElement, err := NewGstElement("rtph264depay", name)
+func NewRtpH264Depay(name string) (*RtpH264Depay, error) {
+	element, err := makeElement(name, "rtph264depay")
 
 	if err != nil {
-		return RtpH264Depay{}, err
+		return nil, err
 	}
 
-	return RtpH264Depay{&createdElement}, nil
+	rtpH264Depay := RtpH264Depay{element}
+	enableGarbageCollection(&rtpH264Depay)
+
+	return &rtpH264Depay, nil
 }

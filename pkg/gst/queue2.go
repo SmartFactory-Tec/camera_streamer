@@ -1,15 +1,18 @@
 package gst
 
 type Queue2 struct {
-	*BaseElement
+	Element
 }
 
-func NewQueue2(name string) (Queue2, error) {
-	createdElement, err := NewGstElement("queue2", name)
+func NewQueue2(name string) (*Queue2, error) {
+	element, err := makeElement(name, "queue2")
 
 	if err != nil {
-		return Queue2{}, err
+		return nil, err
 	}
 
-	return Queue2{&createdElement}, nil
+	queue2 := Queue2{element}
+	enableGarbageCollection(&queue2)
+
+	return &queue2, nil
 }

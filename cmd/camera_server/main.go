@@ -29,7 +29,7 @@ func main() {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Timeout(10 * time.Second))
-
+ 
 	logger.Debugw("Initializing GStreamer")
 	gst.Init()
 
@@ -61,7 +61,15 @@ func main() {
 	logger.Debugw("Creating camera streams from configuration file")
 	// Convert camera configuration entries to camera streams
 	for _, cameraConfig := range config.Cameras {
-		streamSrc, err := NewUriDecodeBinWithAuth(cameraConfig.Id, cameraConfig.Hostname, cameraConfig.Port, cameraConfig.Path, cameraConfig.User, cameraConfig.Password)
+		var (
+			streamSrc *gst.UriDecodeBin
+			err       error
+		)
+		if cameraConfig.User != "" && cameraConfig.Password != "" {
+			streamSrc, err = NewUriDecodeBinWithAuth(cameraConfig.Id, cameraConfig.Hostname, cameraConfig.Port, cameraConfig.Path, cameraConfig.User, cameraConfig.Password)
+		} else {
+			streamSrc, err = NewUriDecodeBin(cameraConfig.Id, cameraConfig.Hostname, cameraConfig.Port, cameraConfig.Path)
+		}
 		if err != nil {
 			logger.Panicw(err.Error())
 		}

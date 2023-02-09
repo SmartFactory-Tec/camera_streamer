@@ -5,23 +5,28 @@ package gst
 #include <gst/gst.h>
 */
 import "C"
-import "runtime"
 
 type Sample struct {
 	gstSample *C.GstSample
 }
 
-func newSample(gstSample *C.GstSample) Sample {
-	sample := Sample{gstSample}
-	// Unref sample when GC runs
-	runtime.SetFinalizer(&sample, func(sample *Sample) {
-		C.gst_sample_unref(sample.gstSample)
-	})
-	return sample
+func wrapSample(gstSample *C.GstSample) Sample {
+	return Sample{
+		gstSample,
+	}
 }
 
-func (b *Sample) Buffer() Buffer {
-	return Buffer{
-		C.gst_sample_get_buffer(b.gstSample),
-	}
+func (s *Sample) Buffer() *Buffer {
+	// not transferring ownership, not enabling gc
+	gstBuffer := C.gst_sample_get_buffer(s.gstSample)
+	buffer := wrapGstBuffer(gstBuffer)
+	return &buffer
+}
+
+func (s *Sample) ref() {
+	C.gst_sample_ref(s.gstSample)
+}
+
+func (s *Sample) unref() {
+	C.gst_sample_unref(s.gstSample)
 }

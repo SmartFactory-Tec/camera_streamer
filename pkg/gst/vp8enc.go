@@ -1,15 +1,18 @@
 package gst
 
 type Vp8Enc struct {
-	*BaseElement
+	Element
 }
 
-func NewVp8Enc(name string) (Vp8Enc, error) {
-	createdElement, err := NewGstElement("vp8enc", name)
+func NewVp8Enc(name string) (*Vp8Enc, error) {
+	element, err := makeElement(name, "vp8enc")
 
 	if err != nil {
-		return Vp8Enc{}, err
+		return nil, err
 	}
 
-	return Vp8Enc{&createdElement}, nil
+	vp8Enc := Vp8Enc{element}
+	enableGarbageCollection(&vp8Enc)
+
+	return &vp8Enc, nil
 }

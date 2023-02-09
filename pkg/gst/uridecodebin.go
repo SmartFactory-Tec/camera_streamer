@@ -1,17 +1,19 @@
 package gst
 
 type UriDecodeBin struct {
-	*BaseElement
+	Element
 }
 
-func NewUriDecodeBin(name string, uri string) (UriDecodeBin, error) {
-	createdElement, err := NewGstElement("uridecodebin", name)
+func NewUriDecodeBin(name string, uri string) (*UriDecodeBin, error) {
+	element, err := makeElement(name, "uridecodebin")
 
 	if err != nil {
-		return UriDecodeBin{}, err
+		return nil, err
 	}
 
-	createdElement.SetProperty("uri", uri)
+	uriDecodeBin := UriDecodeBin{element}
+	enableGarbageCollection(&uriDecodeBin)
+	uriDecodeBin.SetProperty("uri", uri)
 
-	return UriDecodeBin{&createdElement}, nil
+	return &uriDecodeBin, nil
 }

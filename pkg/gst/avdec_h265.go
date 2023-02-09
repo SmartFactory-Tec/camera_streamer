@@ -1,15 +1,18 @@
 package gst
 
 type AvDecH265 struct {
-	*BaseElement
+	Element
 }
 
-func NewAvDecH265(name string) (AvDecH265, error) {
-	createdElement, err := NewGstElement("avdec_h265", name)
+func NewAvDecH265(name string) (*AvDecH265, error) {
+	element, err := makeElement(name, "avdec_h265")
 
 	if err != nil {
-		return AvDecH265{}, err
+		return nil, err
 	}
 
-	return AvDecH265{&createdElement}, nil
+	avDecH265 := AvDecH265{element}
+	enableGarbageCollection(&avDecH265)
+
+	return &avDecH265, nil
 }

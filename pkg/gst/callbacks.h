@@ -1,9 +1,6 @@
 #ifndef CALLBACK_H
 #include <gst/gst.h>
 
-extern void padAddedHandler(GstElement*, GstPad* newPad, long index);
-
-extern void newSampleHandler(GstElement* object, long index);
 
 extern void overrunHandler(GstElement* object, long index);
 

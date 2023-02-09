@@ -1,15 +1,20 @@
 package gst
 
+import "C"
+
 type AutoVideoSink struct {
-	*BaseElement
+	Element
 }
 
-func NewAutoVideoSink(name string) (AutoVideoSink, error) {
-	createdElement, err := NewGstElement("autovideosink", name)
+func NewAutoVideoSink(name string) (*AutoVideoSink, error) {
+	element, err := makeElement(name, "autovideosink")
 
 	if err != nil {
-		return AutoVideoSink{}, err
+		return nil, err
 	}
 
-	return AutoVideoSink{&createdElement}, nil
+	autoVideoSink := AutoVideoSink{element}
+	enableGarbageCollection(&autoVideoSink)
+
+	return &autoVideoSink, nil
 }
