@@ -8,30 +8,30 @@ import (
 
 type (
 	Config struct {
-		Port            int
-		ClientOrigin    string
-		HTTPSOriginOnly bool
-		AllowAllOrigins bool
-		Cameras         []CameraConfig
+		Port            int            `toml:"port"`
+		ClientOrigin    string         `toml:"client_origin"`
+		HTTPSOriginOnly bool           `toml:"https_origin_only"`
+		AllowAllOrigins bool           `toml:"allow_all_origins"`
+		StreamConfigs   []StreamConfig `toml:"streams"`
 	}
 
-	CameraConfig struct {
-		Name     string
-		Id       string
-		Hostname string
-		Path     string
-		Port     int
-		User     string
-		Password string
+	StreamConfig struct {
+		Name     string `toml:"name"`
+		Id       string `toml:"id"`
+		Hostname string `toml:"hostname"`
+		Path     string `toml:"path"`
+		Port     int    `toml:"port"`
+		User     string `toml:"user"`
+		Password string `toml:"password"`
 	}
 )
 
 const exampleConfig = "port = 3000\n" +
-	"clientOrigin = 'localhost'\n" +
-	"httpsOriginOnly = false\n" +
-	"allowAllOrigins = false\n\n" +
+	"client_origin = 'localhost'\n" +
+	"https_origin_only = false\n" +
+	"allow_all_origins = false\n\n" +
 	"# example camera definition\n" +
-	"# [[cameras]]\n" +
+	"# [[streams]]\n" +
 	"# name = 'example'\n" +
 	"# id = 'cam1'\n" +
 	"# hostname = 'localhost'\n" +

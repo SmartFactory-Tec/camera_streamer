@@ -2,17 +2,16 @@ package main
 
 import (
 	"camera_server/pkg/gst"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/mattn/go-colorable"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"net/http"
-	"time"
 )
 
 func setupLogger() *zap.SugaredLogger {
@@ -23,17 +22,29 @@ func setupLogger() *zap.SugaredLogger {
 	return baseLogger.Sugar().Named("main")
 }
 
+// SugaredLogger inserts a sugared logger into the request context, as well as logging all requests to the chi server
+func SugaredLogger(logger *zap.SugaredLogger) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			logger.Infof("%s %s", r.Method, r.RequestURI)
+
+			ctx := context.WithValue(r.Context(), "logger", logger.Named("request").With("method", r.Method, "uri", r.RequestURI))
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
 func main() {
 	logger := setupLogger()
 
 	r := chi.NewRouter()
 
-	r.Use(middleware.Timeout(10 * time.Second))
- 
-	logger.Debugw("Initializing GStreamer")
+	r.Use(SugaredLogger(logger))
+
+	logger.Debugw("initializing gstreamer")
 	gst.Init()
 
-	logger.Infow("Loading configuration from file", "filename", "config.toml")
 	config, err := NewConfig()
 
 	var allowedOrigins []string
@@ -55,35 +66,17 @@ func main() {
 		ExposedHeaders: []string{"*"},
 	}))
 
-	var streams []*Stream
-	streamMap := make(map[string]*Stream)
-
-	logger.Debugw("Creating camera streams from configuration file")
-	// Convert camera configuration entries to camera streams
-	for _, cameraConfig := range config.Cameras {
-		var (
-			streamSrc *gst.UriDecodeBin
-			err       error
-		)
-		if cameraConfig.User != "" && cameraConfig.Password != "" {
-			streamSrc, err = NewUriDecodeBinWithAuth(cameraConfig.Id, cameraConfig.Hostname, cameraConfig.Port, cameraConfig.Path, cameraConfig.User, cameraConfig.Password)
-		} else {
-			streamSrc, err = NewUriDecodeBin(cameraConfig.Id, cameraConfig.Hostname, cameraConfig.Port, cameraConfig.Path)
-		}
-		if err != nil {
-			logger.Panicw(err.Error())
-		}
-
-		stream, err := NewStream(cameraConfig.Name, cameraConfig.Id, streamSrc, logger)
-		if err != nil {
-			logger.Panicw(err.Error())
-		}
-
-		streams = append(streams, &stream)
-		streamMap[cameraConfig.Id] = &stream
-	}
+	streamStore := NewStreamStoreFromConfigs(config.StreamConfigs)
 
 	getStreams := func(w http.ResponseWriter, r *http.Request) {
+		streams := make([]*Stream, len(streamStore))
+
+		idx := 0
+		for _, v := range streamStore {
+			streams[idx] = v
+			idx++
+		}
+
 		list, err := json.Marshal(streams)
 
 		if err != nil {
@@ -100,48 +93,44 @@ func main() {
 
 	getStream := func(w http.ResponseWriter, r *http.Request) {
 		logger := logger.Named("getStream")
+		ctx := r.Context()
 
-		streamID := chi.URLParam(r, "streamID")
-
-		stream, ok := streamMap[streamID]
-
-		if !ok {
-			logger.Errorw("stream not found", "id", streamID)
-			w.WriteHeader(404)
-			if _, err := w.Write([]byte("stream not found")); err != nil {
-				logger.Errorw("could not send error response")
-			}
-		}
-
-		json, err := json.Marshal(stream)
+		streamJson, err := json.Marshal(ctx.Value("stream").(*Stream))
 
 		if err != nil {
 			logger.Errorw("error marshaling stream")
 		}
 
-		w.Write(json)
+		_, err = w.Write(streamJson)
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	connectToStream := func(w http.ResponseWriter, r *http.Request) {
-		logger := logger.Named("connectToStream")
+	streamCtx := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			streamID := chi.URLParam(r, "streamID")
 
-		streamID := chi.URLParam(r, "streamID")
+			stream, ok := streamStore[streamID]
 
-		stream, ok := streamMap[streamID]
-		if !ok {
-			logger.Errorw("unknown camera requested", "streamID", streamID)
-			w.WriteHeader(404)
-			return
-		}
-		streamer := NewCameraStreamer(stream, logger)
+			if !ok {
+				logger.Errorw("unknown camera requested", "streamID", streamID)
+				w.WriteHeader(404)
+				return
+			}
 
-		streamer.Begin(w, r)
+			ctx := context.WithValue(r.Context(), "stream", stream)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
 
 	r.Route("/streams", func(r chi.Router) {
 		r.Get("/", getStreams)
-		r.Get("/{streamID}", getStream)
-		r.Get("/{streamID}/video", connectToStream)
+		r.Route("/{streamID}", func(r chi.Router) {
+			r.Use(streamCtx)
+			r.Get("/", getStream)
+			r.Get("/socket", WebRTCHandler(config.ClientOrigin, config.HTTPSOriginOnly, config.AllowAllOrigins))
+		})
 	})
 
 	logger.Infow("starting web server", "port", config.Port)

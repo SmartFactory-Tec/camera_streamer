@@ -144,7 +144,7 @@ package main
 //	trackSinkBin, ok := c.targetTrackSinks[track.ID()]
 //
 //	if !ok {
-//		return fmt.Errorf("Track with ID '%s' is not registered with stream '%s'", track.ID(), c.Name)
+//		return fmt.Errorf("GenerateTrack with ID '%s' is not registered with stream '%s'", track.ID(), c.Name)
 //	}
 //
 //	if len(c.targetTrackSinks) == 1 {

@@ -16,6 +16,9 @@ require (
 
 require (
 	github.com/go-chi/cors v1.2.1 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/klauspost/compress v1.10.3 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/pion/datachannel v1.5.2 // indirect
 	github.com/pion/dtls/v2 v2.1.5 // indirect
@@ -38,4 +41,5 @@ require (
 	golang.org/x/crypto v0.0.0-20220516162934-403b01795ae8 // indirect
 	golang.org/x/net v0.0.0-20220630215102-69896b714898 // indirect
 	golang.org/x/sys v0.1.0 // indirect
+	nhooyr.io/websocket v1.8.7 // indirect
 )
