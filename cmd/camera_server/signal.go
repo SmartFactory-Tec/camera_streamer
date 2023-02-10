@@ -47,14 +47,15 @@ func BeginSignalingSession(ctx context.Context, peerConnection *webrtc.PeerConne
 		message := Message{}
 		err := wsjson.Read(ctx, socket, &message)
 		var closeError websocket.CloseError
-		if errors.As(err, &err) {
+		if errors.As(err, &closeError) {
 			switch closeError.Code {
 			case websocket.StatusNormalClosure:
 				fallthrough
 			case websocket.StatusGoingAway:
+				logger.Debugw("socket closed", "reason", closeError.Code.String())
 				return nil
 			default:
-				err = fmt.Errorf("error reading from socket: %w", err)
+				err = fmt.Errorf("socket closed: %w", err)
 				logger.Error(err)
 				return err
 			}
