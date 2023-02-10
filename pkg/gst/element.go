@@ -89,17 +89,17 @@ func (e *Element) Type() string {
 	return factoryObject.Name()
 }
 
-func (e *Element) QueryPadByName(name string) (*Pad, error) {
+func (e *Element) GetPad(name string) (*Pad, bool) {
 	gstPad := C.gst_element_get_static_pad(e.gstElement, C.CString(name))
 	if gstPad == nil {
-		return nil, fmt.Errorf("Error finding pad with Name '%s', on element '%s'['%s']", name, e.Name(), e.Type())
+		return nil, false
 	}
 
 	// get_static_path transfers ownership, enable unref on garbage collect
 	pad := wrapPad(gstPad)
 	enableGarbageCollection(&pad)
 
-	return &pad, nil
+	return &pad, true
 }
 
 // LinkElements wrapper for C function to link two elements in a pipeline
@@ -184,4 +184,47 @@ func (e *Element) OnPadAdded(callback PadAddedCallback) {
 	padAddedCallbacks[padAddedIndex] = callback
 	C.connectSignalHandler(C.CString("pad-added"), e.gstElement, C.padAddedHandler, C.long(padAddedIndex))
 	padAddedIndex++
+}
+
+func (e *Element) RequestPadWithNameCaps(padTemplate *PadTemplate, name string, caps *Caps) (*Pad, error) {
+	gstPad := C.gst_element_request_pad(e.gstElement, padTemplate.gstPadTemplate, C.CString(name), caps.gstCaps)
+
+	if gstPad == nil {
+		return nil, fmt.Errorf("could not request pad with given parameters")
+	}
+
+	pad := wrapPad(gstPad)
+	enableGarbageCollection(&pad)
+
+	return &pad, nil
+}
+
+func (e *Element) RequestPadWithName(padTemplate *PadTemplate, name string) (*Pad, error) {
+	gstPad := C.gst_element_request_pad(e.gstElement, padTemplate.gstPadTemplate, C.CString(name), nil)
+
+	if gstPad == nil {
+		return nil, fmt.Errorf("could not request pad with given parameters")
+	}
+
+	pad := wrapPad(gstPad)
+	enableGarbageCollection(&pad)
+
+	return &pad, nil
+}
+
+func (e *Element) RequestPad(padTemplate *PadTemplate) (*Pad, error) {
+	gstPad := C.gst_element_request_pad(e.gstElement, padTemplate.gstPadTemplate, nil, nil)
+
+	if gstPad == nil {
+		return nil, fmt.Errorf("could not request pad with template")
+	}
+
+	pad := wrapPad(gstPad)
+	enableGarbageCollection(&pad)
+
+	return &pad, nil
+}
+
+func (e *Element) ReleaseRequestPad(pad *Pad) {
+	C.gst_element_release_request_pad(e.gstElement, pad.gstPad)
 }

@@ -63,7 +63,7 @@ func (b *Bin) GetElement(name string) (*Element, bool) {
 //		return false
 //	}
 //
-//	pad, err := element.QueryPadByName("src")
+//	pad, err := element.GetPad("src")
 //	if err != nil {
 //		return false
 //	}
@@ -85,7 +85,7 @@ func (b *Bin) GetElement(name string) (*Element, bool) {
 //		return false
 //	}
 //
-//	pad, err := element.QueryPadByName("sink")
+//	pad, err := element.GetPad("sink")
 //	if err != nil {
 //		return false
 //	}

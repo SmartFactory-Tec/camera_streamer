@@ -23,7 +23,7 @@ func wrapPad(gstPad *C.GstPad) Pad {
 	}
 }
 
-func (p Pad) Caps() (*Caps, error) {
+func (p *Pad) Caps() (*Caps, error) {
 	gstCaps := C.gst_pad_get_current_caps(p.gstPad)
 
 	if gstCaps == nil {
@@ -35,6 +35,18 @@ func (p Pad) Caps() (*Caps, error) {
 
 	return &caps, nil
 
+}
+
+func (p *Pad) PadTemplate() (*PadTemplate, error) {
+	gstPadTemplate := C.gst_pad_get_pad_template(p.gstPad)
+	if gstPadTemplate == nil {
+		return nil, fmt.Errorf("coulld not get pad template for pad")
+	}
+
+	padTemplate := wrapGstPadTemplate(gstPadTemplate)
+	enableGarbageCollection(&padTemplate)
+
+	return &padTemplate, nil
 }
 
 func LinkPads(first *Pad, second *Pad) error {

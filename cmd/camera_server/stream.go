@@ -69,7 +69,12 @@ func NewStream(name string, id string, src *gst.UriDecodeBin) (Stream, error) {
 			return
 		}
 
-		sinkPad, err := srcQueue.QueryPadByName("sink")
+		sinkPad, ok := srcQueue.GetPad("sink")
+
+		if !ok {
+			panic("failed getting sink pad of queue")
+		}
+
 		err = gst.LinkPads(pad, sinkPad)
 		if err != nil {
 			panic(err)

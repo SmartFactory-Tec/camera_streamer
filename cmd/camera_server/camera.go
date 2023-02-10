@@ -85,7 +85,7 @@ package main
 //	//		return
 //	//	}
 //	//
-//	//	sinkPad, err := queue.QueryPadByName("sink")
+//	//	sinkPad, err := queue.GetPad("sink")
 //	//	panicIfError(err)
 //	//
 //	//	logger.Debugw("Linking new source pad")

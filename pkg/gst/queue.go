@@ -23,7 +23,7 @@ func NewQueue(name string) (*Queue, error) {
 	queue := Queue{element}
 	enableGarbageCollection(&queue)
 
-	return &Queue{element}, nil
+	return &queue, nil
 }
 
 type OverrunCallback func()
