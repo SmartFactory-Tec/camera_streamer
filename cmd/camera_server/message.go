@@ -23,30 +23,6 @@ type Message struct {
 	Payload any     `json:"payload"`
 }
 
-//type StreamDescription struct {
-//	ID   string `json:"id"`
-//	Size int    `json:"size"`
-//}
-
-//type StreamsDescription struct {
-//	Streams []StreamDescription `json:"streams"`
-//}
-
-//func getKeyAndCast[T any](inputMap map[string]interface{}, key string) (T, error) {
-//	v, ok := inputMap[key]
-//	if !ok {
-//		return *new(T), fmt.Errorf("unable to find value with key %s")
-//	}
-//
-//	value, ok := v.(T)
-//
-//	if !ok {
-//		return *new(T), fmt.Errorf("value with key %s is not of type %T", key, *new(T))
-//	}
-//
-//	return value, nil
-//}
-
 func (m Message) IceCandidate() (webrtc.ICECandidateInit, error) {
 	if m.MsgType != ICE_CANDIDATE {
 		return webrtc.ICECandidateInit{}, fmt.Errorf("message is not an ICE candidate")
@@ -97,19 +73,3 @@ func (m Message) SessionDescription() (webrtc.SessionDescription, error) {
 
 	return sessionDescription, nil
 }
-
-//func (m Message) StreamsDescription() (StreamsDescription, error) {
-//	if m.MsgType != STREAMS_DESCRIPTION {
-//		return StreamsDescription{}, fmt.Errorf("message is not a streams description")
-//	}
-//
-//	streamsDescription := StreamsDescription{}
-//
-//	err := mapstructure.WeakDecode(m.Payload, &streamsDescription)
-//
-//	if err != nil {
-//		return StreamsDescription{}, err
-//	}
-//
-//	return streamsDescription, nil
-//}

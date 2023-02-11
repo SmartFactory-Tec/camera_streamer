@@ -1,34 +1,27 @@
 package main
 
 import (
+	"camera_server/pkg/webrtcstream"
 	"github.com/BurntSushi/toml"
 	"os"
 	"path/filepath"
 )
 
 type (
-	Config struct {
-		Port            int            `toml:"port"`
-		ClientOrigin    string         `toml:"client_origin"`
-		HTTPSOriginOnly bool           `toml:"https_origin_only"`
-		AllowAllOrigins bool           `toml:"allow_all_origins"`
-		StreamConfigs   []StreamConfig `toml:"streams"`
+	CorsConfig struct {
+		AllowedOrigins  []string `toml:"allowed_origins"`
+		AllowAllOrigins bool     `toml:"allow_all_origins"`
 	}
-
-	StreamConfig struct {
-		Name     string `toml:"name"`
-		Id       string `toml:"id"`
-		Hostname string `toml:"hostname"`
-		Path     string `toml:"path"`
-		Port     int    `toml:"port"`
-		User     string `toml:"user"`
-		Password string `toml:"password"`
+	Config struct {
+		Port    int                   `toml:"port"`
+		Cors    CorsConfig            `toml:"cors"`
+		Streams []webrtcstream.Config `toml:"streams"`
 	}
 )
 
-const exampleConfig = "port = 3000\n" +
+const exampleConfig = "port = 3000\n\n" +
+	"[cors]" +
 	"client_origin = 'localhost'\n" +
-	"https_origin_only = false\n" +
 	"allow_all_origins = false\n\n" +
 	"# example camera definition\n" +
 	"# [[streams]]\n" +

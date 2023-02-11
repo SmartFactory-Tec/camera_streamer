@@ -186,37 +186,11 @@ func (e *Element) OnPadAdded(callback PadAddedCallback) {
 	padAddedIndex++
 }
 
-func (e *Element) RequestPadWithNameCaps(padTemplate *PadTemplate, name string, caps *Caps) (*Pad, error) {
-	gstPad := C.gst_element_request_pad(e.gstElement, padTemplate.gstPadTemplate, C.CString(name), caps.gstCaps)
+func (e *Element) RequestPad(name string) (*Pad, error) {
+	gstPad := C.gst_element_request_pad_simple(e.gstElement, C.CString(name))
 
 	if gstPad == nil {
-		return nil, fmt.Errorf("could not request pad with given parameters")
-	}
-
-	pad := wrapPad(gstPad)
-	enableGarbageCollection(&pad)
-
-	return &pad, nil
-}
-
-func (e *Element) RequestPadWithName(padTemplate *PadTemplate, name string) (*Pad, error) {
-	gstPad := C.gst_element_request_pad(e.gstElement, padTemplate.gstPadTemplate, C.CString(name), nil)
-
-	if gstPad == nil {
-		return nil, fmt.Errorf("could not request pad with given parameters")
-	}
-
-	pad := wrapPad(gstPad)
-	enableGarbageCollection(&pad)
-
-	return &pad, nil
-}
-
-func (e *Element) RequestPad(padTemplate *PadTemplate) (*Pad, error) {
-	gstPad := C.gst_element_request_pad(e.gstElement, padTemplate.gstPadTemplate, nil, nil)
-
-	if gstPad == nil {
-		return nil, fmt.Errorf("could not request pad with template")
+		return nil, fmt.Errorf("could not request pad with name %s", name)
 	}
 
 	pad := wrapPad(gstPad)

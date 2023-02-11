@@ -70,5 +70,14 @@ func LinkPads(first *Pad, second *Pad) error {
 	default:
 		return fmt.Errorf("unknown error")
 	}
+}
+
+func UnlinkPads(first *Pad, second *Pad) error {
+	ok := int(C.gst_pad_unlink(first.gstPad, second.gstPad)) != 0
+
+	if !ok {
+		return fmt.Errorf("could not unlink pads")
+	}
+	return nil
 
 }

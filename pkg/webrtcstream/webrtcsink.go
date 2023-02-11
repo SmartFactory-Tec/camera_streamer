@@ -1,4 +1,4 @@
-package main
+package webrtcstream
 
 import "C"
 import (
@@ -13,13 +13,13 @@ type WebRtcSink struct {
 	track *webrtc.TrackLocalStaticSample
 }
 
-func NewWebRtcSink(name string, track *webrtc.TrackLocalStaticSample) (WebRtcSink, error) {
+func NewWebRtcSink(name string, track *webrtc.TrackLocalStaticSample) (*WebRtcSink, error) {
 	createdAppSink, err := gst.NewAppSink(name)
 	if err != nil {
-		return WebRtcSink{}, err
+		return nil, err
 	}
 
-	return WebRtcSink{createdAppSink, track}, nil
+	return &WebRtcSink{createdAppSink, track}, nil
 }
 
 func (w *WebRtcSink) Start(ctx context.Context) {
