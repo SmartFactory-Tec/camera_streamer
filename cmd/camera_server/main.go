@@ -4,7 +4,6 @@ import (
 	"camera_server/pkg/gst"
 	"camera_server/pkg/webrtcstream"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
@@ -45,28 +44,6 @@ func main() {
 			logger.Error("error creating stream: %w", err)
 		}
 		streamStore[streamConfig.Id] = stream
-	}
-
-	getStreams := func(w http.ResponseWriter, r *http.Request) {
-		streams := make([]*webrtcstream.WebRTCStream, len(streamStore))
-
-		idx := 0
-		for _, v := range streamStore {
-			streams[idx] = v
-			idx++
-		}
-		list, err := json.Marshal(streams)
-
-		if err != nil {
-			logger.Errorw("Error marshaling camera names")
-			return
-		}
-
-		_, err = w.Write(list)
-		if err != nil {
-			logger.Errorw("Error sending camera list")
-			return
-		}
 	}
 
 	streamCtx := func(next http.Handler) http.Handler {
