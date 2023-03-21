@@ -4,7 +4,26 @@ package gst
    #cgo pkg-config: gstreamer-1.0
 
    #include <gst/gst.h>
-   #include "object.h"
+
+GType g_type_string() {
+	return G_TYPE_STRING;
+}
+
+GType g_type_boolean() {
+	return G_TYPE_BOOLEAN;
+}
+
+GType g_type_float() {
+	return G_TYPE_FLOAT;
+}
+
+GType g_type_int() {
+	return G_TYPE_INT;
+}
+
+GType g_type_caps() {
+	return GST_TYPE_CAPS;
+}
 */
 import "C"
 import (
@@ -35,20 +54,37 @@ func (g *Object) Name() string {
 }
 
 func (g *Object) SetProperty(name string, value any) {
+	gValue := C.GValue{}
 	switch value := value.(type) {
 	case string:
-		C.gst_set_string_property(g.gstObject, C.CString(name), C.CString(value))
+		C.g_value_init(&gValue, C.g_type_string())
+		C.g_value_set_string(&gValue, C.CString(value))
 		break
 	case bool:
-		cValue := C.bool(value)
-		C.gst_set_bool_property(g.gstObject, C.CString(name), &cValue)
+		C.g_value_init(&gValue, C.g_type_boolean())
+		var gBool C.gboolean
+		if value {
+			gBool = 1
+		} else {
+			gBool = 0
+		}
+		C.g_value_set_boolean(&gValue, gBool)
 		break
 	case int:
-		C.gst_set_int_property(g.gstObject, C.CString(name), C.int(value))
+		C.g_value_init(&gValue, C.g_type_int())
+		cInt := C.int(value)
+		C.g_value_set_int(&gValue, cInt)
 		break
+	case float32:
+		C.g_value_init(&gValue, C.g_type_float())
+		cFloat := C.float(value)
+		C.g_value_set_float(&gValue, cFloat)
 	case *Caps:
-		C.gst_set_caps_property(g.gstObject, C.CString(name), value.gstCaps)
+		C.g_value_init(&gValue, C.g_type_caps())
+		C.gst_value_set_caps(&gValue, value.gstCaps)
 	default:
 		panic("Unsupported type for element property!")
 	}
+
+	C.g_object_set_property(&g.gstObject.object, C.CString(name), &gValue)
 }

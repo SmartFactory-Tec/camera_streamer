@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/pion/webrtc/v3"
 	"go.uber.org/zap"
-	"runtime"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type Config struct {
@@ -25,14 +25,15 @@ type WebRTCStream struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
 
-	pipeline          *gst.Pipeline
-	bus               *gst.Bus
-	busMessageHandler BusMessageHandlerFunc
+	pipeline *gst.Pipeline
+	bus      *gst.Bus
 
-	source *gst.UriDecodeBin
+	source       *gst.RtspSource
+	sourceLinked bool
 
 	// Shared elements across all tracks
 	queue      *gst.Queue
+	dec        *gst.DecodeBin3
 	enc        *gst.Vp8Enc
 	sourceTee  *gst.Tee
 	multiqueue *gst.Multiqueue
@@ -77,21 +78,37 @@ func New(config Config) (*WebRTCStream, error) {
 		uri = fmt.Sprintf("rtsp://%s:%d%s", config.Hostname, config.Port, config.Path)
 	}
 
-	src, err := gst.NewUriDecodeBin(config.Id, uri)
+	// shared elements
+	src, err := gst.NewRtspSource(fmt.Sprintf("%s-src", config.Id), uri)
+	if err != nil {
+		return nil, err
+	}
+	src.SetProperty("latency", 200)   // in ms
+	src.SetProperty("buffer-mode", 3) // slave to sender, the camera
+	src.SetProperty("ntp-sync", true)
 
-	// Create shared elements (tee, encoder and multiqueue)
+	dec, err := gst.NewDecodeBin3(fmt.Sprintf("%s-dec", config.Id))
+	if err != nil {
+		return nil, err
+	}
+
 	queue, err := gst.NewQueue(fmt.Sprintf("%s-queue", config.Id))
 	if err != nil {
 		return nil, err
 	}
+	queue.SetProperty("leaky", 2)
+	queue.SetProperty("max-size-buffers", 1)
 
 	enc, err := gst.NewVp8Enc(fmt.Sprintf("%s-enc", config.Id))
 	if err != nil {
 		return nil, err
 	}
 	// realtime
-	enc.SetProperty("deadline", 33333)
-	enc.SetProperty("cpu-used", 3)
+	enc.SetProperty("deadline", 30000)
+	enc.SetProperty("cpu-used", 5)
+	enc.SetProperty("end-usage", 1)
+	enc.SetProperty("error-resilient", 0x1)
+	//enc.SetProperty("target-bitrate", 1000)
 
 	srcTee, err := gst.NewTee(fmt.Sprintf("%s-source-tee", config.Id))
 	if err != nil {
@@ -107,6 +124,7 @@ func New(config Config) (*WebRTCStream, error) {
 	// Build pipeline
 	pipeline.AddElement(src)
 	pipeline.AddElement(queue)
+	pipeline.AddElement(dec)
 	pipeline.AddElement(enc)
 	pipeline.AddElement(srcTee)
 	pipeline.AddElement(multiqueue)
@@ -114,38 +132,15 @@ func New(config Config) (*WebRTCStream, error) {
 	gst.LinkElements(queue, enc)
 	gst.LinkElements(enc, srcTee)
 
-	src.OnPadAdded(func(pad *gst.Pad) {
-		// TODO handle error
-		caps, err := pad.Caps()
-		format, err := caps.Format(0)
-		if err != nil {
-			panic(err)
-		}
-
-		if format.Name() != "video/x-raw" {
-			return
-		}
-
-		sinkPad, ok := queue.GetPad("sink")
-
-		if !ok {
-			panic("failed getting sink pad of queue")
-		}
-
-		err = gst.LinkPads(pad, sinkPad)
-		if err != nil {
-			panic(err)
-		}
-	})
-
 	stream := WebRTCStream{
 		config.Id,
 		config.Name,
 		pipeline,
 		bus,
-		nil,
 		src,
+		false,
 		queue,
+		dec,
 		enc,
 		srcTee,
 		multiqueue,
@@ -157,14 +152,44 @@ func New(config Config) (*WebRTCStream, error) {
 		0,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	src.OnPadAdded(func(pad *gst.Pad) {
+		if stream.sourceLinked {
+			return
+		}
+		sinkPad, ok := dec.GetPad("sink")
 
-	go stream.processMsgBus(ctx)
+		if !ok {
+			panic("failed getting sink pad of queue")
+		}
 
-	// Make sure that if this object is ever garbage collected, cancel the bus context
-	runtime.SetFinalizer(&stream, func(stream *WebRTCStream) {
-		cancel()
+		err = gst.LinkPads(pad, sinkPad)
+		if err != nil {
+			panic(err)
+		}
+
+		stream.sourceLinked = true
 	})
+
+	dec.OnPadAdded(func(pad *gst.Pad) {
+		if pad.Name() != "video_0" {
+			return
+		}
+
+		sinkPad, ok := queue.GetPad("sink")
+		if !ok {
+			panic("failed getting sink pad of encoder")
+		}
+
+		err = gst.LinkPads(pad, sinkPad)
+		if err != nil {
+			panic(err)
+		}
+	})
+
+	err = stream.pipeline.SetState(gst.PAUSED)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing the pipeline: %w", err)
+	}
 
 	return &stream, nil
 }
@@ -200,7 +225,7 @@ func (s *WebRTCStream) removeTrack(track *webrtc.TrackLocalStaticSample, logger 
 
 	if len(s.sinks) == 0 {
 		logger.Debugw("no tracks left, pausing pipeline")
-		if err := s.pipeline.SetState(gst.READY); err != nil {
+		if err := s.pipeline.SetState(gst.PAUSED); err != nil {
 			return err
 		}
 	}
@@ -320,6 +345,8 @@ func (s *WebRTCStream) HandleTrackRequest(ctx context.Context, logger *zap.Sugar
 
 	ctx, cancelTrack := context.WithCancel(ctx)
 
+	go s.processMsgBus(ctx, logger)
+
 	logger.Debugw("creating track from stream")
 
 	track, err := s.createTrack(ctx, logger)
@@ -328,6 +355,13 @@ func (s *WebRTCStream) HandleTrackRequest(ctx context.Context, logger *zap.Sugar
 		cancelTrack()
 		return
 	}
+
+	min, max, err := s.pipeline.QueryLatency()
+	if err != nil {
+		logger.Errorw("could not query latency")
+	}
+
+	logger.Debugw("latency", "min", min, "max", max)
 
 	handler(ctx, track)
 
@@ -343,22 +377,30 @@ func (s *WebRTCStream) HandleTrackRequest(ctx context.Context, logger *zap.Sugar
 
 type BusMessageHandlerFunc func(ctx context.Context, message *gst.Message)
 
-func (s *WebRTCStream) OnBusMessage(handler BusMessageHandlerFunc) {
-	s.busMessageHandler = handler
-}
-
-func (s *WebRTCStream) processMsgBus(ctx context.Context) {
+func (s *WebRTCStream) processMsgBus(ctx context.Context, logger *zap.SugaredLogger) {
+	logger = logger.Named("MsgBus")
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			msg, err := s.bus.PopMessageWithFilter(gst.ERROR | gst.END_OF_STREAM)
+			msg, err := s.bus.PopMessageWithFilter(gst.LATENCY)
+
 			// If there's an error, there's no message to process
-			if err == nil && s.busMessageHandler != nil {
-				s.busMessageHandler(ctx, msg)
+			if err != nil {
+				time.Sleep(50 * time.Millisecond)
+				continue
+			}
+			switch msg.Type() {
+			case gst.LATENCY:
+				//latency := s.pipeline.Latency()
+				//if latency == -1 {
+				//	s.pipeline.SetProperty("latency", 0)
+				//} else {
+				//	logger.Debugw("track latency", "latency", s.pipeline.Latency().Milliseconds())
+				//}
 			}
 		}
-
+		time.Sleep(50 * time.Millisecond)
 	}
 }
