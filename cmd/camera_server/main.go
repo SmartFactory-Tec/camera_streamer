@@ -69,22 +69,6 @@ func main() {
 		}
 	}
 
-	getStream := func(w http.ResponseWriter, r *http.Request) {
-		logger := logger.Named("getStream")
-		ctx := r.Context()
-
-		streamJson, err := json.Marshal(ctx.Value("stream").(*webrtcstream.WebRTCStream))
-
-		if err != nil {
-			logger.Errorw("error marshaling stream")
-		}
-
-		_, err = w.Write(streamJson)
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	streamCtx := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			streamID := chi.URLParam(r, "streamID")
@@ -102,13 +86,9 @@ func main() {
 		})
 	}
 
-	r.Route("/streams", func(r chi.Router) {
-		r.Get("/", getStreams)
-		r.Route("/{streamID}", func(r chi.Router) {
-			r.Use(streamCtx)
-			r.Get("/", getStream)
-			r.Get("/socket", makeGetStreamHandler(logger))
-		})
+	r.Route("/{streamID}", func(r chi.Router) {
+		r.Use(streamCtx)
+		r.Get("/", makeGetStreamHandler(logger))
 	})
 
 	logger.Infow("starting web server", "port", config.Port)
@@ -119,10 +99,4 @@ func main() {
 		logger.Panicw("Fatal error", "err", err.Error())
 	}
 
-}
-
-func panicIfError(err error) {
-	if err != nil {
-		panic(err.Error())
-	}
 }
