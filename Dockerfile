@@ -1,5 +1,5 @@
 # Specifies a parent image
-FROM golang:1.19.2-bullseye
+FROM golang:1.20.2-bullseye
 
 LABEL org.opencontainers.image.source=https://github.com/Smartfactory-Tec/camera_server
 

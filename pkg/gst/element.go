@@ -187,7 +187,7 @@ func (e *Element) OnPadAdded(callback PadAddedCallback) {
 }
 
 func (e *Element) RequestPad(name string) (*Pad, error) {
-	gstPad := C.gst_element_request_pad_simple(e.gstElement, C.CString(name))
+	gstPad := C.gst_element_get_request_pad(e.gstElement, C.CString(name))
 
 	if gstPad == nil {
 		return nil, fmt.Errorf("could not request pad with name %s", name)
