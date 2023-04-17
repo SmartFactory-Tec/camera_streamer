@@ -1,12 +1,12 @@
 package main
 
 import (
-	"camera_server/pkg/gst"
-	"camera_server/pkg/webrtcstream"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/SmartFactory-Tec/camera_server/pkg/gst"
+	"github.com/SmartFactory-Tec/camera_server/pkg/webrtcstream"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"net/http"

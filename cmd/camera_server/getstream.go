@@ -1,8 +1,8 @@
 package main
 
 import (
-	"camera_server/pkg/webrtcstream"
 	"context"
+	"github.com/SmartFactory-Tec/camera_server/pkg/webrtcstream"
 	"github.com/pion/webrtc/v3"
 	"go.uber.org/zap"
 	"net/http"

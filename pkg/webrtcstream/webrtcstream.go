@@ -1,9 +1,9 @@
 package webrtcstream
 
 import (
-	"camera_server/pkg/gst"
 	"context"
 	"fmt"
+	"github.com/SmartFactory-Tec/camera_server/pkg/gst"
 	"github.com/pion/webrtc/v3"
 	"go.uber.org/zap"
 	"strconv"

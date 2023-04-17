@@ -36,7 +36,7 @@ RUN go mod download
 COPY . .
 
 # Builds your app with optional configuration
-RUN go build -buildvcs=false -o ./camera_server camera_server/cmd/camera_server
+RUN go build -buildvcs=false -o ./camera_server github.com/SmartFactory-Tec/camera_server/cmd/camera_server
 
 ENV CAMERA_SERVER_CONFIG=/config
 
