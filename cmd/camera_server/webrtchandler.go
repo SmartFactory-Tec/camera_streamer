@@ -191,7 +191,7 @@ func makeNegotiationNeededHandler(ctx context.Context, peerConnection *webrtc.Pe
 			logger.Error(fmt.Errorf("error setting local description from new offer: %w", err))
 			return
 		}
-		message := Message{MsgType: SESSION_DESCRIPTION, Payload: offer}
+		message := Message{MsgType: SESSION_DESCRIPTION, Payload: peerConnection.LocalDescription()}
 
 		logger.Debugw("sending local description to peer")
 

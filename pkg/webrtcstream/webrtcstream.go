@@ -12,17 +12,13 @@ import (
 )
 
 type Config struct {
-	Name     string `toml:"name"`
-	Id       string `toml:"id"`
-	Hostname string `toml:"hostname"`
-	Path     string `toml:"path"`
-	Port     int    `toml:"port"`
-	User     string `toml:"user"`
-	Password string `toml:"password"`
+	Name             string `toml:"name" json:"name"`
+	Id               int    `toml:"id" json:"id"`
+	ConnectionString string `toml:"connection_string" json:"connection_string"`
 }
 
 type WebRTCStream struct {
-	Id   string `json:"id"`
+	Id   int    `json:"id"`
 	Name string `json:"name"`
 
 	pipeline *gst.Pipeline
@@ -69,17 +65,8 @@ func New(config Config) (*WebRTCStream, error) {
 		return nil, err
 	}
 
-	var uri string
-
-	// Create source uridecodebin
-	if config.User != "" && config.Password != "" {
-		uri = fmt.Sprintf("rtsp://%s:%s@%s:%d%s", config.User, config.Password, config.Hostname, config.Port, config.Path)
-	} else {
-		uri = fmt.Sprintf("rtsp://%s:%d%s", config.Hostname, config.Port, config.Path)
-	}
-
 	// shared elements
-	src, err := gst.NewRtspSource(fmt.Sprintf("%s-src", config.Id), uri)
+	src, err := gst.NewRtspSource(fmt.Sprintf("%s-src", config.Id), config.ConnectionString)
 	if err != nil {
 		return nil, err
 	}

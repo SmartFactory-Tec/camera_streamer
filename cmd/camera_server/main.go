@@ -4,11 +4,13 @@ import (
 	"camera_server/pkg/gst"
 	"camera_server/pkg/webrtcstream"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"net/http"
+	"strconv"
 )
 
 func main() {
@@ -21,7 +23,7 @@ func main() {
 	logger.Debugw("initializing gstreamer")
 	gst.Init()
 
-	config, err := NewConfig()
+	config := loadConfig(logger)
 
 	var allowedOrigins []string
 
@@ -35,27 +37,56 @@ func main() {
 		AllowedHeaders: []string{"*"},
 		ExposedHeaders: []string{"*"},
 	}))
-	streamStore := make(map[string]*webrtcstream.WebRTCStream)
 
-	for _, streamConfig := range config.Streams {
-		logger.Debugw("creating stream", "name", streamConfig.Name)
-		stream, err := webrtcstream.New(streamConfig)
-		if err != nil {
-			logger.Error("error creating stream: %w", err)
-		}
-		streamStore[streamConfig.Id] = stream
-	}
+	streamStore := make(map[int]*webrtcstream.WebRTCStream)
+	cameraServiceUrl := fmt.Sprintf("%s:%d/", config.CameraService.Hostname, config.CameraService.Port)
 
 	streamCtx := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			streamID := chi.URLParam(r, "streamID")
+			streamIdString := chi.URLParam(r, "streamID")
 
-			stream, ok := streamStore[streamID]
+			cameraId, err := strconv.ParseInt(streamIdString, 10, 32)
+
+			if err != nil {
+				logger.Errorw("invalid camera id")
+				http.Error(w, "invalid camera id", 400)
+				return
+			}
+
+			stream, ok := streamStore[int(cameraId)]
 
 			if !ok {
-				logger.Errorw("unknown camera requested", "streamID", streamID)
-				w.WriteHeader(404)
-				return
+				logger.Debugw("creating camera stream", "camera id", cameraId)
+				resp, err := http.Get("http://" + cameraServiceUrl + "cameras/" + strconv.FormatInt(cameraId, 10))
+				if err != nil {
+					logger.Errorw("could not get camera info from camera service", "err", err)
+					w.WriteHeader(500)
+					return
+				}
+				if resp.StatusCode == 404 {
+					logger.Errorw("unknown camera stream requested")
+					w.WriteHeader(404)
+					return
+				} else if resp.StatusCode != 200 {
+					logger.Errorw("unknown server error")
+					w.WriteHeader(500)
+					return
+				}
+
+				var streamConfig webrtcstream.Config
+				bodyDecoder := json.NewDecoder(resp.Body)
+				if err := bodyDecoder.Decode(&streamConfig); err != nil {
+					logger.Errorw("could not parse camera service response body")
+					w.WriteHeader(500)
+					return
+				}
+
+				newStream, err := webrtcstream.New(streamConfig)
+				if err != nil {
+					logger.Error("error creating stream: %w", err)
+				}
+				streamStore[int(cameraId)] = newStream
+				stream = newStream
 			}
 
 			ctx := context.WithValue(r.Context(), "stream", stream)
@@ -69,7 +100,7 @@ func main() {
 	})
 
 	logger.Infow("starting web server", "port", config.Port)
-	err = http.ListenAndServe(fmt.Sprintf(":%d", config.Port), r)
+	err := http.ListenAndServe(fmt.Sprintf(":%d", config.Port), r)
 	logger.Infow("server stopped")
 
 	if !errors.Is(err, http.ErrServerClosed) {
