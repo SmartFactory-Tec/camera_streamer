@@ -2,8 +2,8 @@ package webrtcstream
 
 import "C"
 import (
-	"camera_server/pkg/gst"
 	"context"
+	"github.com/SmartFactory-Tec/camera_server/pkg/gst"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
