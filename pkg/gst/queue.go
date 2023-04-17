@@ -10,17 +10,20 @@ import "C"
 import "sync"
 
 type Queue struct {
-	*BaseElement
+	Element
 }
 
-func NewQueue(name string) (Queue, error) {
-	createdElement, err := NewGstElement("queue", name)
+func NewQueue(name string) (*Queue, error) {
+	element, err := makeElement(name, "queue")
 
 	if err != nil {
-		return Queue{}, err
+		return nil, err
 	}
 
-	return Queue{&createdElement}, nil
+	queue := Queue{element}
+	enableGarbageCollection(&queue)
+
+	return &queue, nil
 }
 
 type OverrunCallback func()

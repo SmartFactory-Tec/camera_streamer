@@ -6,7 +6,9 @@ package gst
 #include <gst/gst.h>
 */
 import "C"
-import "fmt"
+import (
+	"fmt"
+)
 
 type MessageType int
 
@@ -56,11 +58,23 @@ const (
 
 type Message struct {
 	gstMessage *C.GstMessage
-	Type       MessageType
+	MiniObject
 }
 
+func (m *Message) Type() MessageType {
+	return MessageType(m.gstMessage._type)
+}
+
+func wrapGstMessage(gstMessage *C.GstMessage) Message {
+	return Message{
+		gstMessage,
+		wrapGstMiniObject(&gstMessage.mini_object),
+	}
+}
+
+// TODO improve parsing
 func (m *Message) ParseAsError() (string, error) {
-	if m.Type != ERROR {
+	if m.Type() != ERROR {
 		return "", fmt.Errorf("message is not an error")
 	}
 

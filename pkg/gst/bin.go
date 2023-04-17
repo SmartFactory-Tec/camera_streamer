@@ -8,106 +8,96 @@ package gst
 import "C"
 import (
 	"fmt"
-	"sync"
 	"unsafe"
 )
 
-type Bin interface {
-	AddElement(Element) bool
-	RemoveElement(Element) bool
-	GetElement(string) (Element, bool)
-	binBase() *BaseBin
+type Bin struct {
+	gstBin *C.GstBin
 	Element
 }
 
-type BaseBin struct {
-	BaseElement
-	Elements *sync.Map
-	gstBin   *C.GstBin
-}
-
-func NewBaseBin(name string) (BaseBin, error) {
+func NewBin(name string) (*Bin, error) {
 	gstBin := C.gst_bin_new(C.CString(name))
 
 	if gstBin == nil {
-		return BaseBin{}, fmt.Errorf("error while creating bin with name '%s'", name)
+		return nil, fmt.Errorf("error while creating bin with name '%s'", name)
 	}
 
-	createdBin := BaseBin{
-		gstBin: (*C.GstBin)(unsafe.Pointer(gstBin)),
-		BaseElement: BaseElement{
-			gstElement:   (*C.GstElement)(unsafe.Pointer(gstBin)),
-			elementState: NULL,
-			elementType:  "bin",
-		},
-		Elements: new(sync.Map),
+	bin := wrapBin((*C.GstBin)(unsafe.Pointer(gstBin)))
+	enableGarbageCollection(&bin)
+
+	return &bin, nil
+}
+
+func wrapBin(gstBin *C.GstBin) Bin {
+	return Bin{
+		gstBin,
+		wrapGstElement((*C.GstElement)(unsafe.Pointer(gstBin))),
 	}
-
-	return createdBin, nil
 }
 
-func (b *BaseBin) binBase() *BaseBin {
-	return b
+func (b *Bin) AddElement(element elementCastable) bool {
+	return C.gst_bin_add(b.gstBin, element.element().gstElement) != 0
 }
 
-func (b *BaseBin) AddElement(element Element) bool {
-	b.Elements.Store(element.Name(), element)
-	return C.gst_bin_add(b.gstBin, element.elementBase().gstElement) != 0
+func (b *Bin) RemoveElement(element elementCastable) bool {
+	return C.gst_bin_remove(b.gstBin, element.element().gstElement) != 0
 }
 
-func (b *BaseBin) RemoveElement(element Element) bool {
-	b.Elements.Delete(element.Name())
-	return C.gst_bin_remove(b.gstBin, element.elementBase().gstElement) != 0
-}
+func (b *Bin) GetElement(name string) (*Element, bool) {
+	gstElement := C.gst_bin_get_by_name(b.gstBin, C.CString(name))
 
-func (b *BaseBin) GetElement(name string) (Element, bool) {
-	if value, ok := b.Elements.Load(name); !ok {
+	if gstElement == nil {
 		return nil, false
-	} else {
-		return value.(Element), true
 	}
+
+	// This is a new reference for the element, it should be safe to wrap it and add the finalizer
+	element := wrapGstElement(gstElement)
+	enableGarbageCollection(&element)
+
+	return &element, true
 }
 
-func (b *BaseBin) AddSrcElement(element Element) bool {
-	if ok := b.AddElement(element); !ok {
-		return false
-	}
-
-	pad, err := element.QueryPadByName("src")
-	if err != nil {
-		return false
-	}
-
-	ghostSrc, err := NewGhostPad("src", pad)
-	if err != nil {
-		return false
-	}
-
-	if err := b.AddPad(ghostSrc); err != nil {
-		return false
-	}
-
-	return true
-}
-
-func (b *BaseBin) AddSinkElement(element Element) bool {
-	if ok := b.AddElement(element); !ok {
-		return false
-	}
-
-	pad, err := element.QueryPadByName("sink")
-	if err != nil {
-		return false
-	}
-
-	ghostSrc, err := NewGhostPad("sink", pad)
-	if err != nil {
-		return false
-	}
-
-	if err := b.AddPad(ghostSrc); err != nil {
-		return false
-	}
-
-	return true
-}
+//func (b *Bin) AddSrcElement(element Element) bool {
+//	if ok := b.AddElement(element); !ok {
+//		return false
+//	}
+//
+//	pad, err := element.GetPad("src")
+//	if err != nil {
+//		return false
+//	}
+//
+//	ghostSrc, err := NewGhostPad("src", pad)
+//	if err != nil {
+//		return false
+//	}
+//
+//	if err := b.AddPad(ghostSrc); err != nil {
+//		return false
+//	}
+//
+//	return true
+//}
+//
+//func (b *BaseBin) AddSinkElement(element Element) bool {
+//	if ok := b.AddElement(element); !ok {
+//		return false
+//	}
+//
+//	pad, err := element.GetPad("sink")
+//	if err != nil {
+//		return false
+//	}
+//
+//	ghostSrc, err := NewGhostPad("sink", pad)
+//	if err != nil {
+//		return false
+//	}
+//
+//	if err := b.AddPad(ghostSrc); err != nil {
+//		return false
+//	}
+//
+//	return true
+//}

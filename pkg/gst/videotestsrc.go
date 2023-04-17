@@ -1,15 +1,18 @@
 package gst
 
 type VideoTestSrc struct {
-	*BaseElement
+	Element
 }
 
-func NewVideoTestSrc(name string) (VideoTestSrc, error) {
-	createdElement, err := NewGstElement("videotestsrc", name)
+func NewVideoTestSrc(name string) (*VideoTestSrc, error) {
+	element, err := makeElement(name, "videotestsrc")
 
 	if err != nil {
-		return VideoTestSrc{}, err
+		return nil, err
 	}
 
-	return VideoTestSrc{&createdElement}, nil
+	videoTestSrc := VideoTestSrc{element}
+	enableGarbageCollection(&videoTestSrc)
+
+	return &videoTestSrc, nil
 }

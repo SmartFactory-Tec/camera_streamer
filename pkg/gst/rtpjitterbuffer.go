@@ -1,15 +1,18 @@
 package gst
 
 type RtpJitterBuffer struct {
-	*BaseElement
+	Element
 }
 
-func NewRtpJitterBuffer(name string) (RtpJitterBuffer, error) {
-	createdElement, err := NewGstElement("rtpjitterbuffer", name)
+func NewRtpJitterBuffer(name string) (*RtpJitterBuffer, error) {
+	element, err := makeElement(name, "rtpjitterbuffer")
 
 	if err != nil {
-		return RtpJitterBuffer{}, err
+		return nil, err
 	}
 
-	return RtpJitterBuffer{&createdElement}, nil
+	rtpJitterBuffer := RtpJitterBuffer{element}
+	enableGarbageCollection(&rtpJitterBuffer)
+
+	return &rtpJitterBuffer, nil
 }

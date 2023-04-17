@@ -1,75 +1,87 @@
 package main
 
 import (
-	"github.com/BurntSushi/toml"
+	"errors"
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"os"
-	"path/filepath"
+	"path"
 )
 
 type (
-	Config struct {
-		Port            int
-		ClientOrigin    string
-		HTTPSOriginOnly bool
-		AllowAllOrigins bool
-		Cameras         []CameraConfig
+	CorsConfig struct {
+		AllowedOrigins  []string `mapstructure:"allowed_origins"`
+		AllowAllOrigins bool     `mapstructure:"allow_all_origins"`
 	}
 
-	CameraConfig struct {
-		Name     string
-		Id       string
-		Hostname string
-		Path     string
-		Port     int
-		User     string
-		Password string
+	CameraServiceConfig struct {
+		Hostname string `mapstructure:"hostname"`
+		Port     int    `mapstructure:"port"`
+	}
+
+	Config struct {
+		Port          int                 `toml:"port"`
+		CameraService CameraServiceConfig `mapstructure:"camera_service"`
+		Cors          CorsConfig          `mapstructure:"cors"`
 	}
 )
 
-const exampleConfig = "port = 3000\n" +
-	"clientOrigin = 'localhost'\n" +
-	"httpsOriginOnly = false\n" +
-	"allowAllOrigins = false\n\n" +
-	"# example camera definition\n" +
-	"# [[cameras]]\n" +
-	"# name = 'example'\n" +
-	"# id = 'cam1'\n" +
-	"# hostname = 'localhost'\n" +
-	"# path = '/cam/1'\n" +
-	"# port = 80\n" +
-	"# user = 'admin'\n" +
-	"# password = 'admin'\n"
+func loadConfig(logger *zap.SugaredLogger) Config {
+	configLoader := viper.New()
 
-func NewConfig() (Config, error) {
-
-	var ConfigPath string
-
-	if ServerConfigPath, found := os.LookupEnv("SERVER_CONFIG_PATH"); found {
-		ConfigPath = ServerConfigPath
-	} else if XdgConfigHome, found := os.LookupEnv("XDG_CONFIG_HOME"); found {
-		ConfigPath = filepath.Join(XdgConfigHome, "camera_server")
+	if v, ok := os.LookupEnv("CAMERA_SERVER_CONFIG"); ok {
+		configLoader.AddConfigPath(v)
+		if err := os.MkdirAll(v, 0777); err != nil {
+			logger.Fatal(err)
+		}
+	} else if v, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok {
+		folder := path.Join(v, "camera_server")
+		if err := os.MkdirAll(folder, 0777); err != nil {
+			logger.Fatal(err)
+		}
+		configLoader.AddConfigPath(folder)
+	} else if v, ok := os.LookupEnv("HOME"); ok {
+		folder := path.Join(v, ".config/camera_server")
+		if err := os.MkdirAll(folder, 0777); err != nil {
+			logger.Fatal(err)
+		}
+		configLoader.AddConfigPath(folder)
 	} else {
-		HomePath := os.Getenv("HOME")
-		ConfigPath = filepath.Join(HomePath, ".config", "camera_server")
+		logger.Fatal("could not resolve config path")
+	}
+
+	configLoader.SetConfigName("config")
+	configLoader.SetConfigType("toml")
+
+	// main config
+	configLoader.SetDefault("port", 3000)
+
+	// db config
+	configLoader.SetDefault("camera_service.hostname", "localhost")
+	configLoader.SetDefault("camera_service.port", 3000)
+
+	err := configLoader.ReadInConfig()
+
+	if err != nil {
+		var notFoundError viper.ConfigFileNotFoundError
+		if errors.As(err, &notFoundError) {
+			logger.Infow("file not found, creating default config file", "file", configLoader.ConfigFileUsed())
+			if err := configLoader.SafeWriteConfig(); err != nil {
+				logger.Fatalf("could not create default config file: %s", err)
+			}
+		} else {
+			logger.Fatalf("could not read config file: %s", err)
+		}
+	} else {
+		logger.Infow("loaded service config from config file", "file", configLoader.ConfigFileUsed())
 	}
 
 	var config Config
 
-	configFilePath := filepath.Join(ConfigPath, "config.toml")
-
-	for {
-		if _, err := toml.DecodeFile(configFilePath, &config); err != nil {
-			if err := os.Mkdir(ConfigPath, os.ModePerm); err != nil {
-				return Config{}, err
-			}
-
-			if err := os.WriteFile(configFilePath, []byte(exampleConfig), 0666); err != nil {
-				return Config{}, err
-			}
-		} else {
-			break
-		}
+	if err := configLoader.Unmarshal(&config); err != nil {
+		logger.Fatal("error unmarshaling config file: %s", err)
+		return Config{}
 	}
 
-	return config, nil
+	return config
 }

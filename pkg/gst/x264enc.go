@@ -1,15 +1,18 @@
 package gst
 
 type X264Enc struct {
-	*BaseElement
+	Element
 }
 
-func NewX264Enc(name string) (X264Enc, error) {
-	createdElement, err := NewGstElement("x264enc", name)
+func NewX264Enc(name string) (*X264Enc, error) {
+	element, err := makeElement(name, "x264enc")
 
 	if err != nil {
-		return X264Enc{}, err
+		return nil, err
 	}
 
-	return X264Enc{&createdElement}, nil
+	x264Enc := X264Enc{element}
+	enableGarbageCollection(&x264Enc)
+
+	return &x264Enc, nil
 }

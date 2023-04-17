@@ -1,15 +1,18 @@
 package gst
 
 type CapsFilter struct {
-	*BaseElement
+	Element
 }
 
-func NewCapsFilter(name string) (CapsFilter, error) {
-	createdElement, err := NewGstElement("capsfilter", name)
+func NewCapsFilter(name string) (*CapsFilter, error) {
+	element, err := makeElement(name, "capsfilter")
 
 	if err != nil {
-		return CapsFilter{}, err
+		return nil, err
 	}
 
-	return CapsFilter{&createdElement}, nil
+	capsFilter := CapsFilter{element}
+	enableGarbageCollection(&capsFilter)
+
+	return &capsFilter, nil
 }

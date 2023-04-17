@@ -8,18 +8,20 @@ package gst
 import "C"
 
 type RtspSource struct {
-	location string
-	*BaseElement
+	Element
 }
 
-func NewRtspSource(name string, location string) (RtspSource, error) {
-	createdElement, err := NewGstElement("rtspsrc", name)
+func NewRtspSource(name string, location string) (*RtspSource, error) {
+	element, err := makeElement(name, "rtspsrc")
 
 	if err != nil {
-		return RtspSource{}, err
+		return nil, err
 	}
 
-	createdElement.SetProperty("location", location)
+	rtspSource := RtspSource{element}
+	enableGarbageCollection(&rtspSource)
 
-	return RtspSource{location: location, BaseElement: &createdElement}, nil
+	rtspSource.SetProperty("location", location)
+
+	return &rtspSource, nil
 }

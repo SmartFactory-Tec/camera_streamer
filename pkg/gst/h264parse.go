@@ -1,15 +1,20 @@
 package gst
 
 type H264Parse struct {
-	*BaseElement
+	Element
 }
 
-func NewH264Parse(name string) (H264Parse, error) {
-	createdElement, err := NewGstElement("h264parse", name)
+func NewH264Parse(name string) (*H264Parse, error) {
+	element, err := makeElement(name, "h264parse")
 
 	if err != nil {
-		return H264Parse{}, err
+		return nil, err
 	}
 
-	return H264Parse{&createdElement}, nil
+	h264Parse := H264Parse{
+		element,
+	}
+	enableGarbageCollection(&h264Parse)
+
+	return &h264Parse, nil
 }

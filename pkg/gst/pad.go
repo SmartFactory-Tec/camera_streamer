@@ -8,32 +8,49 @@ package gst
 import "C"
 import (
 	"fmt"
+	"unsafe"
 )
 
-type Pad interface {
-	Caps() Caps
-	padBase() *BasePad
-}
-
-type BasePad struct {
+type Pad struct {
 	gstPad *C.GstPad
+	Object
 }
 
-func (p *BasePad) Caps() Caps {
+func wrapPad(gstPad *C.GstPad) Pad {
+	return Pad{
+		gstPad,
+		wrapGstObject((*C.GstObject)(unsafe.Pointer(gstPad))),
+	}
+}
+
+func (p *Pad) Caps() (*Caps, error) {
 	gstCaps := C.gst_pad_get_current_caps(p.gstPad)
 
-	return &BaseCaps{
-		gstCaps,
+	if gstCaps == nil {
+		return nil, fmt.Errorf("could not get caps for pad")
 	}
 
+	caps := wrapGstCaps(gstCaps)
+	enableGarbageCollection(&caps)
+
+	return &caps, nil
+
 }
 
-func (p *BasePad) padBase() *BasePad {
-	return p
+func (p *Pad) PadTemplate() (*PadTemplate, error) {
+	gstPadTemplate := C.gst_pad_get_pad_template(p.gstPad)
+	if gstPadTemplate == nil {
+		return nil, fmt.Errorf("coulld not get pad template for pad")
+	}
+
+	padTemplate := wrapGstPadTemplate(gstPadTemplate)
+	enableGarbageCollection(&padTemplate)
+
+	return &padTemplate, nil
 }
 
-func LinkPads(first Pad, second Pad) error {
-	ret := C.gst_pad_link(first.padBase().gstPad, second.padBase().gstPad)
+func LinkPads(first *Pad, second *Pad) error {
+	ret := C.gst_pad_link(first.gstPad, second.gstPad)
 
 	switch ret {
 	case 0:
@@ -53,5 +70,14 @@ func LinkPads(first Pad, second Pad) error {
 	default:
 		return fmt.Errorf("unknown error")
 	}
+}
+
+func UnlinkPads(first *Pad, second *Pad) error {
+	ok := int(C.gst_pad_unlink(first.gstPad, second.gstPad)) != 0
+
+	if !ok {
+		return fmt.Errorf("could not unlink pads")
+	}
+	return nil
 
 }

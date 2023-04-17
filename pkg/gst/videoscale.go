@@ -1,15 +1,18 @@
 package gst
 
 type VideoScale struct {
-	*BaseElement
+	Element
 }
 
-func NewVideoScale(name string) (VideoScale, error) {
-	createdElement, err := NewGstElement("videoscale", name)
+func NewVideoScale(name string) (*VideoScale, error) {
+	element, err := makeElement(name, "videoscale")
 
 	if err != nil {
-		return VideoScale{}, err
+		return nil, err
 	}
 
-	return VideoScale{&createdElement}, nil
+	videoScale := VideoScale{element}
+	enableGarbageCollection(&videoScale)
+
+	return &videoScale, nil
 }

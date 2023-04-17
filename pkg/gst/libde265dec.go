@@ -1,15 +1,20 @@
 package gst
 
 type LibDe265Dec struct {
-	*BaseElement
+	Element
 }
 
-func NewLibDe265Dec(name string) (LibDe265Dec, error) {
-	createdElement, err := NewGstElement("libde265dec", name)
+func NewLibDe265Dec(name string) (*LibDe265Dec, error) {
+	element, err := makeElement(name, "libde265dec")
 
 	if err != nil {
-		return LibDe265Dec{}, err
+		return nil, err
 	}
 
-	return LibDe265Dec{&createdElement}, nil
+	libDe265Dec := LibDe265Dec{
+		element,
+	}
+	enableGarbageCollection(&libDe265Dec)
+
+	return &libDe265Dec, nil
 }
