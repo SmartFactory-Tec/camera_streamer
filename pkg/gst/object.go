@@ -79,9 +79,11 @@ func (g *Object) SetProperty(name string, value any) {
 		C.g_value_init(&gValue, C.g_type_float())
 		cFloat := C.float(value)
 		C.g_value_set_float(&gValue, cFloat)
+		break
 	case *Caps:
 		C.g_value_init(&gValue, C.g_type_caps())
 		C.gst_value_set_caps(&gValue, value.gstCaps)
+		break
 	default:
 		panic("Unsupported type for element property!")
 	}
