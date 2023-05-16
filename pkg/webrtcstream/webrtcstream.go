@@ -91,11 +91,13 @@ func New(config Config) (*WebRTCStream, error) {
 		return nil, err
 	}
 	// realtime
+	//enc.SetProperty("deadline", 1)
 	enc.SetProperty("deadline", 30000)
-	enc.SetProperty("cpu-used", 5)
+	enc.SetProperty("cpu-used", 0)
+	enc.SetProperty("bits-per-pixel", float32(0.04))
 	enc.SetProperty("end-usage", 1)
+	//enc.SetProperty("undershoot", 95)
 	enc.SetProperty("error-resilient", 0x1)
-	//enc.SetProperty("target-bitrate", 1000)
 
 	srcTee, err := gst.NewTee(fmt.Sprintf("%s-source-tee", config.Id))
 	if err != nil {
