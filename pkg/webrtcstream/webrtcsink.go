@@ -3,7 +3,7 @@ package webrtcstream
 import "C"
 import (
 	"context"
-	"github.com/SmartFactory-Tec/camera_server/pkg/gst"
+	"github.com/SmartFactory-Tec/camera_streamer/pkg/gst"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 )

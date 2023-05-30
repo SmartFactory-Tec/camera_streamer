@@ -1,4 +1,4 @@
-module github.com/SmartFactory-Tec/camera_server
+module github.com/SmartFactory-Tec/camera_streamer
 
 go 1.19
 

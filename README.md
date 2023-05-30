@@ -20,21 +20,21 @@ git clone https://github.com/SmartFactory-Tec/camera_server.git
 First, enter the repository's folder and download all of the project's dependencies:
 
 ```shell
-cd camera_server
+cd camera_streamer
 go mod download
 ```
 
 Next, to run the program run the following command:
 
 ```shell
-go run camera_server/cmd/camera_server
+go run camera_streamer/cmd/camera_streamer
 ```
 
 If you otherwise want to only build the server and get it's executable, use the following command (don't forget to give 
 the executable a name):
 
 ```shell
-go build -o {EXECUTABLE NAME} camera_server/cmd/camera_server
+go build -o {EXECUTABLE NAME} camera_streamer/cmd/camera_streamer
 ```
 
 ## Configuring the server
@@ -46,7 +46,7 @@ variable to any other folder.
 An image for running this server is available in the GitHub Container Registry. Pull it with the following command:
 
 ```shell
-docker pull ghcr.io/smartfactory-tec/camera_server:latest
+docker pull ghcr.io/smartfactory-tec/camera_streamer:latest
 ```
 
 To configure the server inside the docker image, override the `/config` folder inside the image (with a volume or bind

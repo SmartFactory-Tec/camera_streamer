@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/SmartFactory-Tec/camera_server/pkg/webrtcstream"
+	"github.com/SmartFactory-Tec/camera_streamer/pkg/webrtcstream"
 	"github.com/pion/webrtc/v3"
 	"go.uber.org/zap"
 	"net/http"
