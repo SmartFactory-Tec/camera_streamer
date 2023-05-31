@@ -2,8 +2,10 @@ package webrtcstream
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/SmartFactory-Tec/camera_streamer/pkg/gst"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pion/webrtc/v3"
 	"go.uber.org/zap"
 	"strconv"
@@ -11,10 +13,42 @@ import (
 	"time"
 )
 
+type Orientation string
+
+const (
+	CameraOrientationVertical           Orientation = "vertical"
+	CameraOrientationHorizontal         Orientation = "horizontal"
+	CameraOrientationInvertedVertical   Orientation = "inverted_vertical"
+	CameraOrientationInvertedHorizontal Orientation = "inverted_horizontal"
+)
+
+func (co *Orientation) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(*co))
+}
+
+func (co *Orientation) UnmarshalJSON(data []byte) error {
+	var s string
+	err := json.Unmarshal(data, &s)
+	if err != nil {
+		return err
+	}
+
+	if s == string(CameraOrientationHorizontal) ||
+		s == string(CameraOrientationVertical) ||
+		s == string(CameraOrientationInvertedHorizontal) ||
+		s == string(CameraOrientationInvertedVertical) {
+		*co = Orientation(s)
+		return nil
+	} else {
+		return fmt.Errorf("invalid value for enum CameraOrientation")
+	}
+}
+
 type Config struct {
-	Name             string `toml:"name" json:"name"`
-	Id               int    `toml:"id" json:"id"`
-	ConnectionString string `toml:"connection_string" json:"connection_string"`
+	Name             string      `toml:"name" json:"name"`
+	Id               int         `toml:"id" json:"id"`
+	ConnectionString string      `toml:"connection_string" json:"connection_string"`
+	Orientation      Orientation `toml:"orientation" json:"orientation"`
 }
 
 type WebRTCStream struct {
@@ -46,16 +80,25 @@ type WebRTCStream struct {
 	sinkCounter int
 }
 
+func orientationToMethod(orientation Orientation) gst.VideoOrientationMethod {
+	switch orientation {
+	case CameraOrientationHorizontal:
+		return gst.IDENTITY
+	case CameraOrientationInvertedHorizontal:
+		return gst.ROTATE_180
+	case CameraOrientationVertical:
+		return gst.ROTATE_CLOCKWISE_90
+	case CameraOrientationInvertedVertical:
+		return gst.ROTATE_COUNTERCLOCKWISE_90
+	}
+	return gst.IDENTITY
+}
+
 // New constructs a stream with a given name and id that pulls data from a given source gst element.
 // The element is expected to provide the stream with x-raw video, so it must decode any video it sends.
 func New(config Config) (*WebRTCStream, error) {
-	var err error
-	defer func() {
-		err = fmt.Errorf("could not create stream: %w", err)
-	}()
-
 	// First create the pipeline
-	pipeline, err := gst.NewGstPipeline(fmt.Sprintf("%s-pipeline", config.Id))
+	pipeline, err := gst.NewGstPipeline(fmt.Sprintf("%d-pipeline", config.Id))
 	if err != nil {
 		return nil, err
 	}
@@ -65,47 +108,57 @@ func New(config Config) (*WebRTCStream, error) {
 		return nil, err
 	}
 
-	// shared elements
-	src, err := gst.NewRtspSource(fmt.Sprintf("%s-src", config.Id), config.ConnectionString)
-	if err != nil {
-		return nil, err
-	}
-	src.SetProperty("latency", 200)   // in ms
-	src.SetProperty("buffer-mode", 3) // slave to sender, the camera
-	src.SetProperty("ntp-sync", true)
+	// build pipeline elements
+	var result *multierror.Error
+	src, err := gst.NewRtspSource(fmt.Sprintf("%d-src", config.Id), config.ConnectionString)
+	result = multierror.Append(result, err)
+	queue, err := gst.NewQueue(fmt.Sprintf("%d-queue", config.Id))
+	result = multierror.Append(result, err)
+	videoFlip, err := gst.NewVideoFlip(fmt.Sprintf("%d-videoflip", config.Id), orientationToMethod(config.Orientation))
+	result = multierror.Append(result, err)
+	dec, err := gst.NewDecodeBin3(fmt.Sprintf("%d-dec", config.Id))
+	result = multierror.Append(result, err)
+	enc, err := gst.NewVp8Enc(fmt.Sprintf("%d-enc", config.Id))
+	result = multierror.Append(result, err)
+	srcTee, err := gst.NewTee(fmt.Sprintf("%d-source-tee", config.Id))
+	result = multierror.Append(result, err)
+	multiqueue, err := gst.NewMultiqueue(fmt.Sprintf("%d-multiqueue", config.Id))
+	result = multierror.Append(result, err)
 
-	dec, err := gst.NewDecodeBin3(fmt.Sprintf("%s-dec", config.Id))
-	if err != nil {
-		return nil, err
+	if result.ErrorOrNil() != nil {
+		return nil, result
 	}
 
-	queue, err := gst.NewQueue(fmt.Sprintf("%s-queue", config.Id))
-	if err != nil {
-		return nil, err
+	// configure source
+	result = nil
+	result = multierror.Append(result, src.SetProperty("latency", 200))   // in ms
+	result = multierror.Append(result, src.SetProperty("buffer-mode", 3)) // slave to sender, the camera
+	result = multierror.Append(result, src.SetProperty("ntp-sync", true))
+	if result.ErrorOrNil() != nil {
+		return nil, result
 	}
-	queue.SetProperty("leaky", 2)
-	queue.SetProperty("max-size-buffers", 1)
 
-	enc, err := gst.NewVp8Enc(fmt.Sprintf("%s-enc", config.Id))
-	if err != nil {
-		return nil, err
+	//configure queue
+	result = nil
+	result = multierror.Append(result, queue.SetProperty("leaky", 2))
+	result = multierror.Append(result, queue.SetProperty("max-size-buffers", 1))
+	if result.ErrorOrNil() != nil {
+		return nil, result
 	}
-	// realtime
-	//enc.SetProperty("deadline", 1)
-	enc.SetProperty("deadline", 30000)
-	enc.SetProperty("cpu-used", 0)
-	enc.SetProperty("bits-per-pixel", float32(0.04))
-	enc.SetProperty("end-usage", 1)
-	//enc.SetProperty("undershoot", 95)
-	enc.SetProperty("error-resilient", 0x1)
 
-	srcTee, err := gst.NewTee(fmt.Sprintf("%s-source-tee", config.Id))
-	if err != nil {
-		return nil, err
+	//configure encoder
+	result = nil
+	result = multierror.Append(result, enc.SetProperty("deadline", 30000))
+	result = multierror.Append(result, enc.SetProperty("cpu-used", 0))
+	result = multierror.Append(result, enc.SetProperty("bits-per-pixel", float32(0.04)))
+	result = multierror.Append(result, enc.SetProperty("end-usage", 1))
+	result = multierror.Append(result, enc.SetProperty("error-resilient", 0x1))
+	if result.ErrorOrNil() != nil {
+		return nil, result
 	}
-	srcTee.SetProperty("allow-not-linked", true)
 
-	multiqueue, err := gst.NewMultiqueue(fmt.Sprintf("%s-multiqueue", config.Id))
+	// configure tee
+	err = srcTee.SetProperty("allow-not-linked", true)
 	if err != nil {
 		return nil, err
 	}
@@ -113,13 +166,20 @@ func New(config Config) (*WebRTCStream, error) {
 	// Build pipeline
 	pipeline.AddElement(src)
 	pipeline.AddElement(queue)
+	pipeline.AddElement(videoFlip)
 	pipeline.AddElement(dec)
 	pipeline.AddElement(enc)
 	pipeline.AddElement(srcTee)
 	pipeline.AddElement(multiqueue)
 
-	gst.LinkElements(queue, enc)
-	gst.LinkElements(enc, srcTee)
+	// Link pipeline together
+	result = nil
+	result = multierror.Append(result, gst.LinkElements(queue, videoFlip))
+	result = multierror.Append(result, gst.LinkElements(videoFlip, enc))
+	result = multierror.Append(result, gst.LinkElements(enc, srcTee))
+	if result.ErrorOrNil() != nil {
+		return nil, err
+	}
 
 	stream := WebRTCStream{
 		config.Id,

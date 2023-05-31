@@ -27,6 +27,7 @@ GType g_type_caps() {
 */
 import "C"
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -53,7 +54,7 @@ func (g *Object) Name() string {
 	return C.GoString(cStr)
 }
 
-func (g *Object) SetProperty(name string, value any) {
+func (g *Object) SetProperty(name string, value any) error {
 	gValue := C.GValue{}
 	switch value := value.(type) {
 	case string:
@@ -85,8 +86,9 @@ func (g *Object) SetProperty(name string, value any) {
 		C.gst_value_set_caps(&gValue, value.gstCaps)
 		break
 	default:
-		panic("Unsupported type for element property!")
+		return fmt.Errorf("attempted to assign value of invalid type to property")
 	}
 
 	C.g_object_set_property(&g.gstObject.object, C.CString(name), &gValue)
+	return nil
 }

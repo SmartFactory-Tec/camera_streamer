@@ -19,7 +19,9 @@ func NewWebRtcSink(name string, track *webrtc.TrackLocalStaticSample) (*WebRtcSi
 		return nil, err
 	}
 
-	createdAppSink.SetProperty("sync", true)
+	if err := createdAppSink.SetProperty("sync", true); err != nil {
+		return nil, err
+	}
 
 	return &WebRtcSink{createdAppSink, track}, nil
 }
