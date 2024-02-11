@@ -140,7 +140,7 @@ func New(config Config) (*WebRTCStream, error) {
 
 	//configure queue
 	result = nil
-	result = multierror.Append(result, queue.SetProperty("leaky", 2))
+	//result = multierror.Append(result, queue.SetProperty("leaky", 2))
 	result = multierror.Append(result, queue.SetProperty("max-size-buffers", 1))
 	if result.ErrorOrNil() != nil {
 		return nil, result
@@ -149,9 +149,9 @@ func New(config Config) (*WebRTCStream, error) {
 	//configure encoder
 	result = nil
 	result = multierror.Append(result, enc.SetProperty("deadline", 30000))
-	result = multierror.Append(result, enc.SetProperty("cpu-used", 0))
-	result = multierror.Append(result, enc.SetProperty("bits-per-pixel", float32(0.04)))
-	result = multierror.Append(result, enc.SetProperty("end-usage", 1))
+	result = multierror.Append(result, enc.SetProperty("cpu-used", 4))
+	result = multierror.Append(result, enc.SetProperty("bits-per-pixel", float32(0.02)))
+	result = multierror.Append(result, enc.SetProperty("end-usage", 0))
 	result = multierror.Append(result, enc.SetProperty("error-resilient", 0x1))
 	if result.ErrorOrNil() != nil {
 		return nil, result

@@ -63,9 +63,9 @@ func main() {
 					w.WriteHeader(500)
 					return
 				}
-				if resp.StatusCode == 404 {
+				if resp.StatusCode == http.StatusNotFound {
 					logger.Errorw("unknown camera stream requested")
-					w.WriteHeader(404)
+					w.WriteHeader(http.StatusNotFound)
 					return
 				} else if resp.StatusCode != 200 {
 					logger.Errorw("unknown server error")
